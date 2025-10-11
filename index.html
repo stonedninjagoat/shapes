@@ -276,7 +276,9 @@ const selectedColumns = selectedOrder.filter(col =>
     if (!groupedData[key]) {
       groupedData[key] = { ...row };
       groupedData[key][shapeCountCol] = 0;
-    }
+    } else {
+    // Keep formula_ext as the first row's value (or merge if needed)
+  }
     groupedData[key][shapeCountCol] += row[shapeCountCol];
   });
 
@@ -299,18 +301,17 @@ const selectedColumns = selectedOrder.filter(col =>
         if (keyA > keyB) return s.dir === 'asc' ? 1 : -1;
       } 
       else if (col === 'formula_ext') {
-        const listA = valA ? valA.split(',').map(v => parseFloat(v.trim()) || 0) : [];
-        const listB = valB ? valB.split(',').map(v => parseFloat(v.trim()) || 0) : [];
-        const len = Math.max(listA.length, listB.length);
-        for (let i = 0; i < len; i++) {
-          const aNum = listA[i] ?? 0;
-          const bNum = listB[i] ?? 0;
-          if (aNum < bNum) return s.dir === 'asc' ? -1 : 1;
-          if (aNum > bNum) return s.dir === 'asc' ? 1 : -1;
-        }
-        // if lists equal, continue to next priority column
-        continue;
-      }
+  const listA = (valA || "").split(',').map(v => parseFloat(v.trim()) || 0);
+  const listB = (valB || "").split(',').map(v => parseFloat(v.trim()) || 0);
+  const len = Math.max(listA.length, listB.length);
+  for (let i = 0; i < len; i++) {
+    const aNum = listA[i] ?? 0;
+    const bNum = listB[i] ?? 0;
+    if (aNum < bNum) return s.dir === 'asc' ? -1 : 1;
+    if (aNum > bNum) return s.dir === 'asc' ? 1 : -1;
+  }
+  // If all numbers are equal, fall through to next column in priority
+}
       else {
         // Default string comparison
         if (valA < valB) return s.dir === 'asc' ? -1 : 1;
