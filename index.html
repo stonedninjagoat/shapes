@@ -2,13 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>CSV Column Grouping & Shape Count</title>
+<title>CSV</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <style>
   body { font-family: Arial, sans-serif; margin: 20px; }
   #column-checkboxes, #sort-instructions { margin: 10px 0; }
   label { margin-right: 10px; }
-  table { border-collapse: collapse; margin-top: 20px; width: 100%; table-layout: auto; }
+  .table-container { display: flex; align-items: flex-start; }
+  .row-numbers { text-align: right; margin-right: 5px; font-size: 12px; line-height: 22px; }
+  table { border-collapse: collapse; table-layout: auto; }
   table, th, td { border: 1px solid black; padding: 5px; text-align: left; }
   .sort-indicator { font-size: 8px; color: gray; margin-left: 2px; }
   th.sortable { cursor: pointer; text-decoration: underline; }
@@ -20,18 +22,22 @@
 <input type="file" id="csvFile" accept=".csv" />
 <div id="column-checkboxes"></div>
 <div id="sort-instructions"></div>
-<table id="csvTable"></table>
+<div class="table-container">
+  <div class="row-numbers" id="rowNumbers"></div>
+  <table id="csvTable"></table>
+</div>
 
 <script>
 let originalData = [];
 let headers = [];
-let sortPriority = []; // [{col: 'columnName', dir: 'asc'|'desc'}]
+let sortPriority = [];
 const shapeCountCol = 'shape_count';
 
 const csvFileInput = document.getElementById('csvFile');
 const checkboxesDiv = document.getElementById('column-checkboxes');
 const sortInstructionsDiv = document.getElementById('sort-instructions');
 const csvTable = document.getElementById('csvTable');
+const rowNumbersDiv = document.getElementById('rowNumbers');
 
 // Upload CSV
 csvFileInput.addEventListener('change', (e) => {
@@ -75,6 +81,7 @@ function updateTable() {
 
   if (selectedColumns.length === 0) {
     csvTable.innerHTML = '<tr><td>No columns selected</td></tr>';
+    rowNumbersDiv.innerHTML = '';
     return;
   }
 
@@ -105,25 +112,27 @@ function updateTable() {
   }
 
   renderTable(displayData, selectedColumns);
+  renderRowNumbers(displayData.length);
   renderSortInstructions();
+}
+
+// Render row numbers
+function renderRowNumbers(rowCount) {
+  let html = '';
+  for (let i = 1; i <= rowCount; i++) {
+    html += i + '<br>';
+  }
+  rowNumbersDiv.innerHTML = html;
 }
 
 // Render table
 function renderTable(data, displayColumns) {
   csvTable.innerHTML = '';
-  if (data.length === 0) {
-    csvTable.innerHTML = '<tr><td>No data</td></tr>';
-    return;
-  }
+  if (data.length === 0) return;
 
   // Table header
   const thead = document.createElement('thead');
   const headerRow = document.createElement('tr');
-
-  // Row number column
-  const thIndex = document.createElement('th');
-  thIndex.textContent = '#';
-  headerRow.appendChild(thIndex);
 
   // Selected columns
   displayColumns.forEach(col => {
@@ -155,10 +164,8 @@ function renderTable(data, displayColumns) {
   const thCount = document.createElement('th');
   thCount.textContent = shapeCountCol;
   thCount.classList.add('sortable');
-
   thCount.addEventListener('click', () => toggleSort(shapeCountCol));
   thCount.addEventListener('dblclick', () => removeSort(shapeCountCol));
-
   const spCount = sortPriority.findIndex(s => s.col === shapeCountCol);
   if (spCount >= 0) {
     const indicator = document.createElement('span');
@@ -166,20 +173,15 @@ function renderTable(data, displayColumns) {
     indicator.textContent = spCount + 1;
     thCount.appendChild(indicator);
   }
-
   headerRow.appendChild(thCount);
+
   thead.appendChild(headerRow);
   csvTable.appendChild(thead);
 
   // Table body
   const tbody = document.createElement('tbody');
-  data.forEach((row, i) => {
+  data.forEach((row) => {
     const tr = document.createElement('tr');
-
-    // Row number
-    const tdIndex = document.createElement('td');
-    tdIndex.textContent = i + 1;
-    tr.appendChild(tdIndex);
 
     // Selected columns
     displayColumns.forEach(col => {
