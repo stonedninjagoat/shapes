@@ -1,1 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CSV Column Grouping & Sorting</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    #column-checkboxes { margin: 10px 0; }
+    table { border-collapse: collapse; margin-top: 20px; width: 100%; }
+    table, th, td { border: 1px solid black; padding: 5px; text-align: left; }
+    th { cursor: pointer; }
+    th.sorted-asc::after { content: " ▲"; }
+    th.sorted-desc::after { content: " ▼"; }
+  </style>
+</head>
+<body>
+  <h2>Upload CSV and Group Columns</h2>
+  <input type="file" id="csvFile" accept=".csv" />
+  <div id="column-checkboxes"></div>
+  <table id="csvTable"></table>
+
+  <script>
+    let originalData = [];
+    let headers = [];
+    let currentSort = { column: null, direction: 'asc' };
+
+    const csvFileInput = document.getElementById('csvFile');
+    const checkboxesDiv = document.getElementById('column-checkboxes');
+    const csvTable = document.getElementById('csvTable');
+
+    csvFileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: function(results) {
+          originalData = results.data;
+          headers = results.meta.fields;
+          renderCheckboxes();
+          updateGroupedCSV();
+        }
+      });
+    });
+
+    function renderCheckboxes() {
+      checkboxesDiv.innerHTML = '';
+      headers.forEach(header => {
+        const label = document.createElement('label');
+        label.style.marginRight = '10px';
+        label.innerHTML = `
+          <input type="checkbox" checked value="${header}" />
+          ${header}
+        `;
+        checkboxesDiv.appendChild(label);
+      });
+
+      // Add event listener to all checkboxes
+      checkboxesDiv.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        cb.addEventListener('change', updateGroupedCSV);
+      });
+    }
+
+    function updateGroupedCSV() {
+      const selectedColumns = Array.from(checkboxesDiv.querySelectorAll('input[type="checkbox"]:checked'))
+                                   .map(cb => cb.value);
+
+      if (selectedColumns.length === 0) {
+        csvTable.innerHTML = '<tr><td>No columns selected</td></tr>';
+        return;
+      }
+
+      // Group by selected columns
+      const groupedData = {};
+      originalData.forEach(row => {
+        const key = selectedColumns.map(col => row[col] || '').join('|');
+        if (!groupedData[key]) {
+          groupedData[key] = { ...row, count: 0 };
+        }
+        groupedData[key].count += 1;
+      });
+
+      let displayData = Object.values(groupedData);
+
+      // Apply sorting if any
+      if (currentSort.column) {
+        displayData.sort((a, b) => {
+          const valA = (a[currentSort.column] ?? '').toString();
+          const valB = (b[currentSort.column] ?? '').toString();
+          if (currentSort.direction === 'asc') return valA.localeCompare(valB);
+          else return valB.localeCompare(valA);
+        });
+      }
+
+      renderTable(displayData, selectedColumns.concat(['count']));
+    }
+
+    function renderTable(data, displayColumns) {
+      csvTable.innerHTML = '';
+
+      if (data.length === 0) {
+        csvTable.innerHTML = '<tr><td>No data</td></tr>';
+        return;
+      }
+
+      // Header
+      const thead = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+      displayColumns.forEach(col => {
+        const th = document.createElement('th');
+        th.textContent = col;
+        if (currentSort.column === col) {
+          th.classList.add(currentSort.direction === 'asc' ? 'sorted-asc' : 'sorted-desc');
+        }
+        th.addEventListener('click', () => {
+          if (currentSort.column === col) {
+            currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+          } else {
+            currentSort.column = col;
+            currentSort.direction = 'asc';
+          }
+          updateGroupedCSV();
+        });
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      csvTable.appendChild(thead);
+
+      // Body
+      const tbody = document.createElement('tbody');
+      data.forEach(row => {
+        const tr = document.createElement('tr');
+        displayColumns.forEach(col => {
+          const td = document.createElement('td');
+          td.textContent = row[col] ?? '';
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+      csvTable.appendChild(tbody);
+    }
+  </script>
+</body>
+</html>
 
