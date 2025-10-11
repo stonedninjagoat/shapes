@@ -38,6 +38,10 @@ let headers = [];
 let sortPriority = [];
 let selectedOrder = []; // tracks selection order
 const shapeCountCol = 'shape_count';
+const rainbowColors = [
+  "#FF0000", "#FF7F00", "#FFFF00", "#00FF00", "#0000FF", "#4B0082", "#8B00FF",
+  "#FF1493", "#00CED1", "#ADFF2F", "#FF6347", "#20B2AA"
+];
 
 const csvFileInput = document.getElementById('csvFile');
 const checkboxesDiv = document.getElementById('column-checkboxes');
@@ -233,16 +237,44 @@ function renderTable(data, displayColumns) {
   thead.appendChild(headerRow);
   csvTable.appendChild(thead);
 
-  const tbody = document.createElement('tbody');
-  data.forEach(row => {
-    const tr = document.createElement('tr');
-    displayColumns.forEach(col => {
-      const td=document.createElement('td'); td.textContent=row[col]??''; tr.appendChild(td);
-    });
-    const tdCount=document.createElement('td'); tdCount.textContent=row[shapeCountCol]; tr.appendChild(tdCount);
-    tbody.appendChild(tr);
+// Table body
+const tbody = document.createElement('tbody');
+
+// --- Determine color grouping logic ---
+let colorKeyFn;
+if (sortPriority.length > 0) {
+  // If sorted, color by sorted columns combo
+  const sortCols = sortPriority.map(s => s.col);
+  colorKeyFn = row => sortCols.map(c => row[c] ?? "").join("|");
+} else {
+  // Otherwise color by all selected columns combo
+  colorKeyFn = row => displayColumns.map(c => row[c] ?? "").join("|");
+}
+
+// Get unique group keys
+const uniqueKeys = [...new Set(data.map(colorKeyFn))];
+const colorMap = new Map();
+uniqueKeys.forEach((key, i) => {
+  colorMap.set(key, rainbowColors[i % rainbowColors.length]);
+});
+
+// Apply colors row-by-row
+data.forEach(row => {
+  const tr = document.createElement('tr');
+  const rowColor = colorMap.get(colorKeyFn(row));
+  tr.style.backgroundColor = rowColor + "20"; // add transparency (20 hex ≈ 12%)
+  
+  displayColumns.forEach(col => {
+    const td = document.createElement('td');
+    td.textContent = row[col] ?? '';
+    tr.appendChild(td);
   });
-  csvTable.appendChild(tbody);
+  
+  tbody.appendChild(tr);
+});
+
+csvTable.appendChild(tbody);
+
 }
 
 // Toggle sorting
