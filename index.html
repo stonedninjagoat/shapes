@@ -1,18 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu+Mono&display=swap" rel="stylesheet">
 <meta charset="UTF-8">
 <title>shapes tabler</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <style>
-body { font-family: Arial, sans-serif; margin: 20px; }
+body {
+  font-family: 'Ubuntu Mono', monospace;
+  margin: 20px;
+}
 #column-checkboxes, #sort-instructions { margin: 10px 0; }
 label { margin-right: 10px; }
 .table-container { display: flex; }
 .row-numbers, .table-wrapper { overflow-y: auto; max-height: 400px; }
 .row-numbers { text-align: right; margin-right: 5px; font-size: 12px; line-height: 22px; }
-table { border-collapse: collapse; table-layout: auto; width: max-content; min-width: 100%; }
-th, td { border: 1px solid black; padding: 5px; text-align: left; white-space: nowrap; }
+table { border-collapse: collapse; table-layout: auto; width: max-content; min-width: 100%; font-family: 'Ubuntu Mono', monospace; }
+th, td { border: 1px solid black; padding: 5px; text-align: center; vertical-align: middle; white-space: nowrap; }
 thead th { position: sticky; top: 0; background: #eee; z-index: 2; }
 .sort-indicator { font-size: 8px; color: gray; margin-left: 2px; }
 th.sortable { cursor: pointer; text-decoration: underline; }
@@ -290,8 +294,8 @@ csvTable.appendChild(tbody);
 function toggleSort(col){
   const existing = sortPriority.find(s => s.col === col);
   if (!existing) { 
-    if (sortPriority.length >= 3) sortPriority.pop(); 
-    sortPriority.unshift({col, dir:'asc'});
+    if (sortPriority.length >= 3) sortPriority.shift(); // remove oldest
+    sortPriority.push({col, dir:'asc'}); // add new column to end = lowest priority
   } else {
     existing.dir = existing.dir === 'asc' ? 'desc' : 'asc';
   }
