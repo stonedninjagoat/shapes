@@ -2,21 +2,22 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>CSV Column Grouping & Sorting</title>
+<title>CSV Column Grouping & Shape Count</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <style>
   body { font-family: Arial, sans-serif; margin: 20px; }
   #column-checkboxes, #sort-instructions { margin: 10px 0; }
   label { margin-right: 10px; }
-  table { border-collapse: collapse; margin-top: 20px; width: 100%; }
-  table, th, td { border: 1px solid black; padding: 5px; text-align: left; }
+  table { border-collapse: collapse; margin-top: 20px; width: 100%; table-layout: fixed; }
+  table, th, td { border: 1px solid black; padding: 5px; text-align: left; word-wrap: break-word; }
   .sort-indicator { font-size: 8px; color: gray; margin-left: 2px; }
   th.sortable { cursor: pointer; text-decoration: underline; }
+  th, td { overflow: hidden; }
 </style>
 </head>
 <body>
 
-<h2>Upload CSV, Group & Sort Columns</h2>
+<h2>Upload CSV and Aggregate Shape Counts</h2>
 <input type="file" id="csvFile" accept=".csv" />
 <div id="column-checkboxes"></div>
 <div id="sort-instructions"></div>
@@ -26,6 +27,7 @@
 let originalData = [];
 let headers = [];
 let sortPriority = []; // [{col: 'columnName', dir: 'asc'|'desc'}]
+const shapeCountCol = 'shape_count';
 
 const csvFileInput = document.getElementById('csvFile');
 const checkboxesDiv = document.getElementById('column-checkboxes');
@@ -40,8 +42,12 @@ csvFileInput.addEventListener('change', (e) => {
   Papa.parse(file, {
     header: true,
     skipEmptyLines: true,
+    dynamicTyping: true,
     complete: function(results) {
-      originalData = results.data;
+      originalData = results.data.map(row => {
+        row[shapeCountCol] = Number(row[shapeCountCol] || 0);
+        return row;
+      });
       headers = results.meta.fields;
       renderCheckboxes();
       updateTable();
@@ -53,6 +59,7 @@ csvFileInput.addEventListener('change', (e) => {
 function renderCheckboxes() {
   checkboxesDiv.innerHTML = '';
   headers.forEach(header => {
+    if (header === shapeCountCol) return; // do not allow deselecting shape_count
     const label = document.createElement('label');
     label.innerHTML = `<input type="checkbox" checked value="${header}"> ${header}`;
     checkboxesDiv.appendChild(label);
@@ -63,7 +70,7 @@ function renderCheckboxes() {
   });
 }
 
-// Update table with grouping and sorting
+// Update table with aggregation and sorting
 function updateTable() {
   const selectedColumns = Array.from(checkboxesDiv.querySelectorAll('input[type="checkbox"]:checked'))
                                .map(cb => cb.value);
@@ -73,12 +80,15 @@ function updateTable() {
     return;
   }
 
-  // Group by selected columns (deduplicate)
+  // Aggregate shape_count based on selected columns
   const groupedData = {};
   originalData.forEach(row => {
     const key = selectedColumns.map(col => row[col] ?? '').join('|');
-    if (!groupedData[key]) groupedData[key] = { ...row, count: 0 };
-    groupedData[key].count += 1;
+    if (!groupedData[key]) {
+      groupedData[key] = { ...row };
+      groupedData[key][shapeCountCol] = 0;
+    }
+    groupedData[key][shapeCountCol] += row[shapeCountCol];
   });
 
   let displayData = Object.values(groupedData);
@@ -96,7 +106,7 @@ function updateTable() {
     });
   }
 
-  renderTable(displayData, selectedColumns.concat(['count']));
+  renderTable(displayData, selectedColumns);
   renderSortInstructions();
 }
 
@@ -111,20 +121,30 @@ function renderTable(data, displayColumns) {
   // Table header
   const thead = document.createElement('thead');
   const headerRow = document.createElement('tr');
+
+  // Row number column
+  const thIndex = document.createElement('th');
+  thIndex.textContent = '#';
+  headerRow.appendChild(thIndex);
+
+  // shape_count column first
+  const thCount = document.createElement('th');
+  thCount.textContent = shapeCountCol;
+  headerRow.appendChild(thCount);
+
+  // Other selected columns
   displayColumns.forEach(col => {
     const th = document.createElement('th');
     th.textContent = col;
-    if (col !== 'count') {
-      th.classList.add('sortable');
+    th.classList.add('sortable');
 
-      // Single click: toggle A-Z / Z-A
-      th.addEventListener('click', (e) => {
-        if (e.detail === 1) toggleSort(col);
-      });
+    // Single click: toggle A-Z / Z-A
+    th.addEventListener('click', (e) => {
+      if (e.detail === 1) toggleSort(col);
+    });
 
-      // Double click: remove from sort
-      th.addEventListener('dblclick', () => removeSort(col));
-    }
+    // Double click: remove from sort
+    th.addEventListener('dblclick', () => removeSort(col));
 
     // Add sort indicator if exists
     const sp = sortPriority.findIndex(s => s.col === col);
@@ -137,18 +157,32 @@ function renderTable(data, displayColumns) {
 
     headerRow.appendChild(th);
   });
+
   thead.appendChild(headerRow);
   csvTable.appendChild(thead);
 
   // Table body
   const tbody = document.createElement('tbody');
-  data.forEach(row => {
+  data.forEach((row, i) => {
     const tr = document.createElement('tr');
+
+    // Row number
+    const tdIndex = document.createElement('td');
+    tdIndex.textContent = i + 1;
+    tr.appendChild(tdIndex);
+
+    // shape_count value
+    const tdCount = document.createElement('td');
+    tdCount.textContent = row[shapeCountCol];
+    tr.appendChild(tdCount);
+
+    // Other columns
     displayColumns.forEach(col => {
       const td = document.createElement('td');
       td.textContent = row[col] ?? '';
       tr.appendChild(td);
     });
+
     tbody.appendChild(tr);
   });
   csvTable.appendChild(tbody);
