@@ -19,9 +19,12 @@ body {
   padding: 10px;
 }
 
-.file-btn, button, #column-checkboxes {
+.file-btn, button {
+  display: inline-block;   /* prevent stretching to full width */
+  width: auto;             /* fit to content */
   font-family: 'Ubuntu Mono', monospace;
   font-size: 14px;
+  padding: 5px 10px;
   margin-right: 10px;
 }
 
@@ -105,7 +108,13 @@ th.sortable { cursor: pointer; text-decoration: underline; }
 <button id="toggleSelectAll">Select All</button>
 <div id="column-checkboxes"></div>
 <div id="sort-instructions"></div>
-
+<div id="controls" style="margin-bottom:10px;">
+  <label class="file-btn">
+    Choose File
+    <input type="file" id="csvFile" accept=".csv" />
+  </label>
+  <button id="toggleSelectAll">Select All</button>
+</div>
 <div class="table-container">
   <div class="row-numbers" id="rowNumbers"></div>
   <div class="table-wrapper">
