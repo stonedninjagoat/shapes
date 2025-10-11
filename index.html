@@ -58,7 +58,7 @@ csvFileInput.addEventListener('change', (e) => {
   Papa.parse(file, {
     header: true,
     skipEmptyLines: true,
-    dynamicTyping: true,
+    dynamicTyping: false,
     complete: function(results) {
       originalData = results.data.map(row => {
         row[shapeCountCol] = Number(row[shapeCountCol] || 0);
