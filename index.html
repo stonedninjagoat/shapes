@@ -16,7 +16,7 @@
 </head>
 <body>
 
-<h2>Upload CSV, Group Columns, and Sort</h2>
+<h2>Upload CSV, Group & Sort Columns</h2>
 <input type="file" id="csvFile" accept=".csv" />
 <div id="column-checkboxes"></div>
 <div id="sort-instructions"></div>
@@ -73,18 +73,19 @@ function updateTable() {
     return;
   }
 
-  // Group by selected columns (add count)
+  // Group by selected columns (deduplicate)
   const groupedData = {};
   originalData.forEach(row => {
-    const key = selectedColumns.map(col => row[col] || '').join('|');
+    const key = selectedColumns.map(col => row[col] ?? '').join('|');
     if (!groupedData[key]) groupedData[key] = { ...row, count: 0 };
     groupedData[key].count += 1;
   });
+
   let displayData = Object.values(groupedData);
 
   // Apply multi-level sort
   if (sortPriority.length > 0) {
-    displayData.sort((a,b) => {
+    displayData.sort((a, b) => {
       for (let s of sortPriority) {
         const valA = a[s.col] ?? '';
         const valB = b[s.col] ?? '';
@@ -122,9 +123,7 @@ function renderTable(data, displayColumns) {
       });
 
       // Double click: remove from sort
-      th.addEventListener('dblclick', () => {
-        removeSort(col);
-      });
+      th.addEventListener('dblclick', () => removeSort(col));
     }
 
     // Add sort indicator if exists
@@ -160,7 +159,7 @@ function toggleSort(col) {
   const existing = sortPriority.find(s => s.col === col);
   if (!existing) {
     if (sortPriority.length >= 3) sortPriority.pop(); // max 3 levels
-    sortPriority.unshift({col, dir: 'asc'}); // new sort becomes first
+    sortPriority.unshift({ col, dir: 'asc' }); // new sort becomes first
   } else {
     existing.dir = existing.dir === 'asc' ? 'desc' : 'asc'; // toggle direction
   }
@@ -180,7 +179,7 @@ function renderSortInstructions() {
     return;
   }
   sortInstructionsDiv.innerHTML = 'Sort priority (click headers to toggle A-Z / Z-A, dblclick to remove): ' +
-    sortPriority.map((s,i) => `${i+1}: ${s.col} (${s.dir.toUpperCase()})`).join(' | ');
+    sortPriority.map((s, i) => `${i + 1}: ${s.col} (${s.dir.toUpperCase()})`).join(' | ');
 }
 </script>
 
