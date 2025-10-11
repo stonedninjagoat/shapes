@@ -284,20 +284,13 @@ csvTable.appendChild(tbody);
 
 // Toggle sorting
 function toggleSort(col){
-  const existing=sortPriority.find(s=>s.col===col);
-  if(!existing){ if(sortPriority.length>=3) sortPriority.pop(); sortPriority.unshift({col,dir:'asc'});}
-  else if (col === 'extensions') {
-  const listA = String(valA).split(',').map(v => parseFloat(v.trim()) || 0);
-  const listB = String(valB).split(',').map(v => parseFloat(v.trim()) || 0);
-  const len = Math.max(listA.length, listB.length);
-  for (let i = 0; i < len; i++) {
-    const aNum = listA[i] ?? 0;
-    const bNum = listB[i] ?? 0;
-    if (aNum < bNum) return s.dir === 'asc' ? -1 : 1;
-    if (aNum > bNum) return s.dir === 'asc' ? 1 : -1;
+  const existing = sortPriority.find(s => s.col === col);
+  if (!existing) { 
+    if (sortPriority.length >= 3) sortPriority.pop(); 
+    sortPriority.unshift({col, dir:'asc'});
+  } else {
+    existing.dir = existing.dir === 'asc' ? 'desc' : 'asc';
   }
-}
-  else existing.dir=existing.dir==='asc'?'desc':'asc';
   updateTable();
 }
 
