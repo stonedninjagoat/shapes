@@ -19,22 +19,26 @@ body {
   padding: 10px;
 }
 
-.file-btn, button {
-  display: inline-block;   /* prevent stretching to full width */
-  width: auto;             /* fit to content */
-  font-family: 'Ubuntu Mono', monospace;
-  font-size: 14px;
-  padding: 5px 10px;
-  margin-right: 10px;
+#controls {
+  margin-bottom: 10px;
 }
 
-.file-btn {
-  display: inline-block;
+.file-btn, button {
+  display: inline-block;   /* only as wide as content */
+  width: auto;
+  font-family: 'Ubuntu Mono', monospace;
+  font-size: 14px;
   padding: 5px 10px;
   border: 1px solid #000;
   border-radius: 4px;
   background-color: #eee;
   cursor: pointer;
+  margin-right: 10px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.file-btn {
   position: relative;
   overflow: hidden;
 }
@@ -72,7 +76,7 @@ body {
 
 table {
   border-collapse: collapse;
-  width: 100%;
+  width: 100%;   /* table fills wrapper width */
   table-layout: auto;
   font-family: 'Ubuntu Mono', monospace;
 }
@@ -94,22 +98,24 @@ thead th {
 
 th.sortable { cursor: pointer; text-decoration: underline; }
 .sort-indicator { font-size: 8px; color: gray; margin-left: 2px; }
-
 </style>
 </head>
 <body>
 
 <h2>Shapes Table</h2>
 
-<label class="file-btn">
-  Choose File
-  <input type="file" id="csvFile" accept=".csv" />
-</label>
-<button id="toggleSelectAll">Select All</button>
+<div id="controls">
+  <label class="file-btn">
+    Choose File
+    <input type="file" id="csvFile" accept=".csv" />
+  </label>
+  <button id="toggleSelectAll">Select All</button>
+</div>
+
 <div id="column-checkboxes"></div>
 <div id="sort-instructions"></div>
 
-  <div class="table-container">
+<div class="table-container">
   <div class="row-numbers" id="rowNumbers"></div>
   <div class="table-wrapper">
     <table id="csvTable"></table>
