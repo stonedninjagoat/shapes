@@ -16,7 +16,7 @@
 </head>
 <body>
 
-<h2>data</h2>
+<h2>Upload CSV, Group Columns, and Sort</h2>
 <input type="file" id="csvFile" accept=".csv" />
 <div id="column-checkboxes"></div>
 <div id="sort-instructions"></div>
@@ -44,7 +44,7 @@ csvFileInput.addEventListener('change', (e) => {
       originalData = results.data;
       headers = results.meta.fields;
       renderCheckboxes();
-      renderTable(originalData);
+      updateTable();
     }
   });
 });
@@ -115,8 +115,18 @@ function renderTable(data, displayColumns) {
     th.textContent = col;
     if (col !== 'count') {
       th.classList.add('sortable');
-      th.addEventListener('click', () => toggleSort(col));
+
+      // Single click: toggle A-Z / Z-A
+      th.addEventListener('click', (e) => {
+        if (e.detail === 1) toggleSort(col);
+      });
+
+      // Double click: remove from sort
+      th.addEventListener('dblclick', () => {
+        removeSort(col);
+      });
     }
+
     // Add sort indicator if exists
     const sp = sortPriority.findIndex(s => s.col === col);
     if (sp >= 0) {
@@ -125,6 +135,7 @@ function renderTable(data, displayColumns) {
       indicator.textContent = sp + 1;
       th.appendChild(indicator);
     }
+
     headerRow.appendChild(th);
   });
   thead.appendChild(headerRow);
@@ -156,18 +167,21 @@ function toggleSort(col) {
   updateTable();
 }
 
+// Remove column from sort
+function removeSort(col) {
+  sortPriority = sortPriority.filter(s => s.col !== col);
+  updateTable();
+}
+
 // Display current sort instructions
 function renderSortInstructions() {
   if (sortPriority.length === 0) {
     sortInstructionsDiv.innerHTML = '';
     return;
   }
-  sortInstructionsDiv.innerHTML = 'Sort priority (click headers to toggle A-Z / Z-A): ' +
+  sortInstructionsDiv.innerHTML = 'Sort priority (click headers to toggle A-Z / Z-A, dblclick to remove): ' +
     sortPriority.map((s,i) => `${i+1}: ${s.col} (${s.dir.toUpperCase()})`).join(' | ');
 }
-
-// Initial render
-updateTable();
 </script>
 
 </body>
