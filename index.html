@@ -70,7 +70,7 @@ function renderCheckboxes() {
   checkboxesDiv.innerHTML = '';
   headers.forEach(header => {
     const label = document.createElement('label');
-    label.innerHTML = `<input type="checkbox" checked value="${header}"> ${header}`;
+    label.innerHTML = `<input type="checkbox" value="${header}"> ${header}`;
     checkboxesDiv.appendChild(label);
   });
 
