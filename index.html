@@ -139,7 +139,50 @@ const sortInstructionsDiv = document.getElementById('sort-instructions');
 const csvTable = document.getElementById('csvTable');
 const rowNumbersDiv = document.getElementById('rowNumbers');
 const tableWrapperDiv = document.querySelector('.table-wrapper');
+const defaultCsvUrl = 'https://github.com/stonedninjagoat/shapes/raw/refs/heads/main/shapesEvery.csv';
 
+function loadCsvFromUrl(url) {
+  Papa.parse(url, {
+    download: true,
+    header: true,
+    skipEmptyLines: true,
+    dynamicTyping: true,
+    complete: function(results) {
+      originalData = results.data.map(row => {
+        row[shapeCountCol] = Number(row[shapeCountCol] || 0);
+        return row;
+      });
+      headers = results.meta.fields.filter(f => f !== shapeCountCol);
+      selectedOrder = [];
+      renderCheckboxes();
+      updateTable();
+    }
+  });
+}
+
+loadCsvFromUrl(defaultCsvUrl);
+
+csvFileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  Papa.parse(file, {
+    header: true,
+    skipEmptyLines: true,
+    dynamicTyping: true,
+    complete: function(results) {
+      originalData = results.data.map(row => {
+        row[shapeCountCol] = Number(row[shapeCountCol] || 0);
+        return row;
+      });
+      headers = results.meta.fields.filter(f => f !== shapeCountCol);
+      selectedOrder = [];
+      renderCheckboxes();
+      updateTable();
+    }
+  });
+});
+  
 // Upload CSV
 csvFileInput.addEventListener('change', (e) => {
   const file = e.target.files[0];
