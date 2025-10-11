@@ -300,18 +300,19 @@ const selectedColumns = selectedOrder.filter(col =>
         if (keyA < keyB) return s.dir === 'asc' ? -1 : 1;
         if (keyA > keyB) return s.dir === 'asc' ? 1 : -1;
       } 
-      else if (col === 'formula_ext') {
-  const listA = (valA || "").split(',').map(v => parseFloat(v.trim()) || 0);
-  const listB = (valB || "").split(',').map(v => parseFloat(v.trim()) || 0);
+else if (col === 'formula_ext') {
+  const listA = String(valA).split(',').map(v => Number(v.trim()));
+  const listB = String(valB).split(',').map(v => Number(v.trim()));
   const len = Math.max(listA.length, listB.length);
   for (let i = 0; i < len; i++) {
-    const aNum = listA[i] ?? 0;
-    const bNum = listB[i] ?? 0;
+    const aNum = listA[i] ?? -Infinity;
+    const bNum = listB[i] ?? -Infinity;
     if (aNum < bNum) return s.dir === 'asc' ? -1 : 1;
     if (aNum > bNum) return s.dir === 'asc' ? 1 : -1;
   }
-  // If all numbers are equal, fall through to next column in priority
+  continue; // if all equal, check next priority column
 }
+
       else {
         // Default string comparison
         if (valA < valB) return s.dir === 'asc' ? -1 : 1;
