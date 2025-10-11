@@ -72,7 +72,7 @@ let originalData = [];
 let headers = [];
 let sortPriority = [];
 let selectedOrder = []; // tracks selection order
-const shapeCountCol = 'shape_count';
+const shapeCountCol = 'count';
 const rainbowColors = [
   "#FF0000", "#FF7F00", "#FFFF00", "#00FF00", "#0000FF", "#4B0082", "#8B00FF",
   "#FF1493", "#00CED1", "#ADFF2F", "#FF6347", "#20B2AA"
@@ -197,7 +197,7 @@ const selectedColumns = selectedOrder.filter(col =>
         if (keyA < keyB) return s.dir === 'asc' ? -1 : 1;
         if (keyA > keyB) return s.dir === 'asc' ? 1 : -1;
       } 
-      else if (col === 'extensions') {
+      else if (col === 'formula_ext') {
         // Sort by numeric lists, e.g., "1,2,10" correctly
         const listA = valA.split(',').map(v => parseFloat(v.trim()) || 0);
         const listB = valB.split(',').map(v => parseFloat(v.trim()) || 0);
