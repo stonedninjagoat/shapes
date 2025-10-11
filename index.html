@@ -20,8 +20,9 @@ th.sortable { cursor: pointer; text-decoration: underline; }
 </head>
 <body>
 
-<h2>Upload CSV and Aggregate Shape Counts</h2>
+<h2>shapes table</h2>
 <input type="file" id="csvFile" accept=".csv" />
+<button id="toggleSelectAll">Select All</button>
 <div id="column-checkboxes"></div>
 <div id="sort-instructions"></div>
 <div class="table-container">
@@ -78,6 +79,23 @@ function renderCheckboxes() {
     cb.addEventListener('change', updateTable);
   });
 }
+
+// --- Toggle Select All / Deselect All ---
+const toggleButton = document.getElementById('toggleSelectAll');
+
+toggleButton.addEventListener('click', () => {
+  const checkboxes = checkboxesDiv.querySelectorAll('input[type="checkbox"]');
+  const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+
+  // Toggle selection
+  checkboxes.forEach(cb => cb.checked = !allChecked);
+
+  // Update table immediately
+  updateTable();
+
+  // Update button label
+  toggleButton.textContent = allChecked ? 'Select All' : 'Deselect All';
+});
 
 // Update table with aggregation and sorting
 function updateTable() {
