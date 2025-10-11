@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>shapes table</title>
+<title>shapes tabler</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <style>
 body { font-family: Arial, sans-serif; margin: 20px; }
@@ -36,6 +36,7 @@ th.sortable { cursor: pointer; text-decoration: underline; }
 let originalData = [];
 let headers = [];
 let sortPriority = [];
+let selectedOrder = []; // tracks selection order
 const shapeCountCol = 'shape_count';
 
 const csvFileInput = document.getElementById('csvFile');
@@ -60,6 +61,7 @@ csvFileInput.addEventListener('change', (e) => {
         return row;
       });
       headers = results.meta.fields.filter(f => f !== shapeCountCol);
+      selectedOrder = [];
       renderCheckboxes();
       updateTable();
     }
@@ -76,8 +78,21 @@ function renderCheckboxes() {
   });
 
   checkboxesDiv.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-    cb.addEventListener('change', updateTable);
+  cb.addEventListener('change', (e) => {
+    const col = e.target.value;
+
+    if (e.target.checked) {
+      // Add column to end of selection order
+      selectedOrder.push(col);
+    } else {
+      // Remove column if unchecked
+      selectedOrder = selectedOrder.filter(c => c !== col);
+    }
+
+    updateTable();
   });
+});
+
 }
 
 // --- Toggle Select All / Deselect All ---
@@ -99,8 +114,9 @@ toggleButton.addEventListener('click', () => {
 
 // Update table with aggregation and sorting
 function updateTable() {
-  const selectedColumns = Array.from(checkboxesDiv.querySelectorAll('input[type="checkbox"]:checked'))
-                               .map(cb => cb.value);
+const selectedColumns = selectedOrder.filter(col =>
+  checkboxesDiv.querySelector(`input[value="${col}"]`).checked
+);
 
   if (selectedColumns.length === 0) {
     csvTable.innerHTML = '<tr><td>No columns selected</td></tr>';
