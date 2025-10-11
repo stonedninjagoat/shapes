@@ -8,11 +8,10 @@
   body { font-family: Arial, sans-serif; margin: 20px; }
   #column-checkboxes, #sort-instructions { margin: 10px 0; }
   label { margin-right: 10px; }
-  table { border-collapse: collapse; margin-top: 20px; width: 100%; table-layout: fixed; }
-  table, th, td { border: 1px solid black; padding: 5px; text-align: left; word-wrap: break-word; }
+  table { border-collapse: collapse; margin-top: 20px; width: 100%; table-layout: auto; }
+  table, th, td { border: 1px solid black; padding: 5px; text-align: left; }
   .sort-indicator { font-size: 8px; color: gray; margin-left: 2px; }
   th.sortable { cursor: pointer; text-decoration: underline; }
-  th, td { overflow: hidden; }
 </style>
 </head>
 <body>
@@ -48,7 +47,7 @@ csvFileInput.addEventListener('change', (e) => {
         row[shapeCountCol] = Number(row[shapeCountCol] || 0);
         return row;
       });
-      headers = results.meta.fields;
+      headers = results.meta.fields.filter(f => f !== shapeCountCol);
       renderCheckboxes();
       updateTable();
     }
@@ -59,7 +58,6 @@ csvFileInput.addEventListener('change', (e) => {
 function renderCheckboxes() {
   checkboxesDiv.innerHTML = '';
   headers.forEach(header => {
-    if (header === shapeCountCol) return; // do not allow deselecting shape_count
     const label = document.createElement('label');
     label.innerHTML = `<input type="checkbox" checked value="${header}"> ${header}`;
     checkboxesDiv.appendChild(label);
@@ -127,12 +125,7 @@ function renderTable(data, displayColumns) {
   thIndex.textContent = '#';
   headerRow.appendChild(thIndex);
 
-  // shape_count column first
-  const thCount = document.createElement('th');
-  thCount.textContent = shapeCountCol;
-  headerRow.appendChild(thCount);
-
-  // Other selected columns
+  // Selected columns
   displayColumns.forEach(col => {
     const th = document.createElement('th');
     th.textContent = col;
@@ -158,6 +151,23 @@ function renderTable(data, displayColumns) {
     headerRow.appendChild(th);
   });
 
+  // shape_count column at the end
+  const thCount = document.createElement('th');
+  thCount.textContent = shapeCountCol;
+  thCount.classList.add('sortable');
+
+  thCount.addEventListener('click', () => toggleSort(shapeCountCol));
+  thCount.addEventListener('dblclick', () => removeSort(shapeCountCol));
+
+  const spCount = sortPriority.findIndex(s => s.col === shapeCountCol);
+  if (spCount >= 0) {
+    const indicator = document.createElement('span');
+    indicator.classList.add('sort-indicator');
+    indicator.textContent = spCount + 1;
+    thCount.appendChild(indicator);
+  }
+
+  headerRow.appendChild(thCount);
   thead.appendChild(headerRow);
   csvTable.appendChild(thead);
 
@@ -171,17 +181,17 @@ function renderTable(data, displayColumns) {
     tdIndex.textContent = i + 1;
     tr.appendChild(tdIndex);
 
-    // shape_count value
-    const tdCount = document.createElement('td');
-    tdCount.textContent = row[shapeCountCol];
-    tr.appendChild(tdCount);
-
-    // Other columns
+    // Selected columns
     displayColumns.forEach(col => {
       const td = document.createElement('td');
       td.textContent = row[col] ?? '';
       tr.appendChild(td);
     });
+
+    // shape_count value
+    const tdCount = document.createElement('td');
+    tdCount.textContent = row[shapeCountCol];
+    tr.appendChild(tdCount);
 
     tbody.appendChild(tr);
   });
