@@ -286,7 +286,6 @@ if (sortPriority.length > 0) {
 } else {
   // Otherwise color by all selected columns combo
 colorKeyFn = row => displayColumns
-  .filter(c => c !== shapeCountCol)      // exclude shape_count
   .map(c => row[c] ?? "")
   .join("|");
 }
