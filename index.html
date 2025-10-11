@@ -248,7 +248,10 @@ if (sortPriority.length > 0) {
   colorKeyFn = row => sortCols.map(c => row[c] ?? "").join("|");
 } else {
   // Otherwise color by all selected columns combo
-  colorKeyFn = row => displayColumns.map(c => row[c] ?? "").join("|");
+colorKeyFn = row => displayColumns
+  .filter(c => c !== shapeCountCol)      // exclude shape_count
+  .map(c => row[c] ?? "")
+  .join("|");
 }
 
 // Get unique group keys
@@ -281,6 +284,17 @@ csvTable.appendChild(tbody);
 function toggleSort(col){
   const existing=sortPriority.find(s=>s.col===col);
   if(!existing){ if(sortPriority.length>=3) sortPriority.pop(); sortPriority.unshift({col,dir:'asc'});}
+  else if (col === 'extensions') {
+  const listA = String(valA).split(',').map(v => parseFloat(v.trim()) || 0);
+  const listB = String(valB).split(',').map(v => parseFloat(v.trim()) || 0);
+  const len = Math.max(listA.length, listB.length);
+  for (let i = 0; i < len; i++) {
+    const aNum = listA[i] ?? 0;
+    const bNum = listB[i] ?? 0;
+    if (aNum < bNum) return s.dir === 'asc' ? -1 : 1;
+    if (aNum > bNum) return s.dir === 'asc' ? 1 : -1;
+  }
+}
   else existing.dir=existing.dir==='asc'?'desc':'asc';
   updateTable();
 }
