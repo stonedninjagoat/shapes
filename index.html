@@ -2,18 +2,20 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>CSV</title>
+<title>shapes table</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <style>
-  body { font-family: Arial, sans-serif; margin: 20px; }
-  #column-checkboxes, #sort-instructions { margin: 10px 0; }
-  label { margin-right: 10px; }
-  .table-container { display: flex; align-items: flex-start; }
-  .row-numbers { text-align: right; margin-right: 5px; font-size: 12px; line-height: 22px; }
-  table { border-collapse: collapse; table-layout: auto; }
-  table, th, td { border: 1px solid black; padding: 5px; text-align: left; }
-  .sort-indicator { font-size: 8px; color: gray; margin-left: 2px; }
-  th.sortable { cursor: pointer; text-decoration: underline; }
+body { font-family: Arial, sans-serif; margin: 20px; }
+#column-checkboxes, #sort-instructions { margin: 10px 0; }
+label { margin-right: 10px; }
+.table-container { display: flex; }
+.row-numbers, .table-wrapper { overflow-y: auto; max-height: 400px; }
+.row-numbers { text-align: right; margin-right: 5px; font-size: 12px; line-height: 22px; }
+table { border-collapse: collapse; table-layout: auto; width: max-content; min-width: 100%; }
+th, td { border: 1px solid black; padding: 5px; text-align: left; white-space: nowrap; }
+thead th { position: sticky; top: 0; background: #eee; z-index: 2; }
+.sort-indicator { font-size: 8px; color: gray; margin-left: 2px; }
+th.sortable { cursor: pointer; text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -24,7 +26,9 @@
 <div id="sort-instructions"></div>
 <div class="table-container">
   <div class="row-numbers" id="rowNumbers"></div>
-  <table id="csvTable"></table>
+  <div class="table-wrapper">
+    <table id="csvTable"></table>
+  </div>
 </div>
 
 <script>
@@ -38,6 +42,7 @@ const checkboxesDiv = document.getElementById('column-checkboxes');
 const sortInstructionsDiv = document.getElementById('sort-instructions');
 const csvTable = document.getElementById('csvTable');
 const rowNumbersDiv = document.getElementById('rowNumbers');
+const tableWrapperDiv = document.querySelector('.table-wrapper');
 
 // Upload CSV
 csvFileInput.addEventListener('change', (e) => {
@@ -118,114 +123,83 @@ function updateTable() {
 
 // Render row numbers
 function renderRowNumbers(rowCount) {
-  let html = '';
+  rowNumbersDiv.innerHTML = '';
   for (let i = 1; i <= rowCount; i++) {
-    html += i + '<br>';
+    const div = document.createElement('div');
+    div.style.height = '22px';
+    div.textContent = i;
+    rowNumbersDiv.appendChild(div);
   }
-  rowNumbersDiv.innerHTML = html;
 }
+
+// Synchronize scrolling
+tableWrapperDiv.addEventListener('scroll', () => {
+  rowNumbersDiv.scrollTop = tableWrapperDiv.scrollTop;
+});
 
 // Render table
 function renderTable(data, displayColumns) {
   csvTable.innerHTML = '';
   if (data.length === 0) return;
 
-  // Table header
   const thead = document.createElement('thead');
   const headerRow = document.createElement('tr');
 
-  // Selected columns
   displayColumns.forEach(col => {
     const th = document.createElement('th');
     th.textContent = col;
     th.classList.add('sortable');
-
-    // Single click: toggle A-Z / Z-A
-    th.addEventListener('click', (e) => {
-      if (e.detail === 1) toggleSort(col);
-    });
-
-    // Double click: remove from sort
+    th.addEventListener('click', (e) => { if (e.detail===1) toggleSort(col); });
     th.addEventListener('dblclick', () => removeSort(col));
-
-    // Add sort indicator if exists
-    const sp = sortPriority.findIndex(s => s.col === col);
-    if (sp >= 0) {
-      const indicator = document.createElement('span');
-      indicator.classList.add('sort-indicator');
-      indicator.textContent = sp + 1;
-      th.appendChild(indicator);
-    }
-
+    const sp = sortPriority.findIndex(s => s.col===col);
+    if (sp >=0){ const indicator=document.createElement('span'); indicator.classList.add('sort-indicator'); indicator.textContent = sp+1; th.appendChild(indicator);}
     headerRow.appendChild(th);
   });
 
-  // shape_count column at the end
+  // shape_count at end
   const thCount = document.createElement('th');
   thCount.textContent = shapeCountCol;
   thCount.classList.add('sortable');
   thCount.addEventListener('click', () => toggleSort(shapeCountCol));
   thCount.addEventListener('dblclick', () => removeSort(shapeCountCol));
-  const spCount = sortPriority.findIndex(s => s.col === shapeCountCol);
-  if (spCount >= 0) {
-    const indicator = document.createElement('span');
-    indicator.classList.add('sort-indicator');
-    indicator.textContent = spCount + 1;
-    thCount.appendChild(indicator);
-  }
+  const spCount = sortPriority.findIndex(s => s.col===shapeCountCol);
+  if(spCount>=0){ const indicator=document.createElement('span'); indicator.classList.add('sort-indicator'); indicator.textContent=spCount+1; thCount.appendChild(indicator);}
   headerRow.appendChild(thCount);
 
   thead.appendChild(headerRow);
   csvTable.appendChild(thead);
 
-  // Table body
   const tbody = document.createElement('tbody');
-  data.forEach((row) => {
+  data.forEach(row => {
     const tr = document.createElement('tr');
-
-    // Selected columns
     displayColumns.forEach(col => {
-      const td = document.createElement('td');
-      td.textContent = row[col] ?? '';
-      tr.appendChild(td);
+      const td=document.createElement('td'); td.textContent=row[col]??''; tr.appendChild(td);
     });
-
-    // shape_count value
-    const tdCount = document.createElement('td');
-    tdCount.textContent = row[shapeCountCol];
-    tr.appendChild(tdCount);
-
+    const tdCount=document.createElement('td'); tdCount.textContent=row[shapeCountCol]; tr.appendChild(tdCount);
     tbody.appendChild(tr);
   });
   csvTable.appendChild(tbody);
 }
 
-// Toggle sorting of a column
-function toggleSort(col) {
-  const existing = sortPriority.find(s => s.col === col);
-  if (!existing) {
-    if (sortPriority.length >= 3) sortPriority.pop(); // max 3 levels
-    sortPriority.unshift({ col, dir: 'asc' }); // new sort becomes first
-  } else {
-    existing.dir = existing.dir === 'asc' ? 'desc' : 'asc'; // toggle direction
-  }
+// Toggle sorting
+function toggleSort(col){
+  const existing=sortPriority.find(s=>s.col===col);
+  if(!existing){ if(sortPriority.length>=3) sortPriority.pop(); sortPriority.unshift({col,dir:'asc'});}
+  else existing.dir=existing.dir==='asc'?'desc':'asc';
   updateTable();
 }
 
 // Remove column from sort
-function removeSort(col) {
-  sortPriority = sortPriority.filter(s => s.col !== col);
+function removeSort(col){
+  sortPriority=sortPriority.filter(s=>s.col!==col);
   updateTable();
 }
 
-// Display current sort instructions
-function renderSortInstructions() {
-  if (sortPriority.length === 0) {
-    sortInstructionsDiv.innerHTML = '';
-    return;
-  }
-  sortInstructionsDiv.innerHTML = 'Sort priority (click headers to toggle A-Z / Z-A, dblclick to remove): ' +
-    sortPriority.map((s, i) => `${i + 1}: ${s.col} (${s.dir.toUpperCase()})`).join(' | ');
+// Display sort instructions
+function renderSortInstructions(){
+  if(sortPriority.length===0){ sortInstructionsDiv.innerHTML=''; return;}
+  sortInstructionsDiv.innerHTML='Sort priority (click headers to toggle A-Z / Z-A, dblclick to remove): '+
+    sortPriority.map((s,i)=>`${i+1}: ${s.col} (${s.dir.toUpperCase()})`).join(' | ');
 }
 </script>
 
