@@ -224,6 +224,8 @@ function renderCheckboxes() {
     } else {
       // Remove column if unchecked
       selectedOrder = selectedOrder.filter(c => c !== col);
+      // Also remove from sortPriority if present
+      sortPriority = sortPriority.filter(s => s.col !== col);
     }
 
     updateTable();
@@ -243,11 +245,12 @@ toggleButton.addEventListener('click', () => {
     // Deselect all
     checkboxes.forEach(cb => cb.checked = false);
     selectedOrder = [];
+    sortPriority = []; // <-- clear sort priorities too
     toggleButton.textContent = 'Select All';
   } else {
     // Select all
     checkboxes.forEach(cb => cb.checked = true);
-    selectedOrder = Array.from(checkboxes).map(cb => cb.value); // ✅ update order list
+    selectedOrder = Array.from(checkboxes).map(cb => cb.value); // update order list
     toggleButton.textContent = 'Deselect All';
   }
 
