@@ -274,6 +274,10 @@ data.forEach(row => {
     td.textContent = row[col] ?? '';
     tr.appendChild(td);
   });
+
+    const tdCount = document.createElement('td');
+    tdCount.textContent = row[shapeCountCol] ?? 0; 
+    tr.appendChild(tdCount);
   
   tbody.appendChild(tr);
 });
