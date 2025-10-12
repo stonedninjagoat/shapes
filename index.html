@@ -346,35 +346,35 @@ tableWrapperDiv.addEventListener('scroll', () => {
 
 // Render table
 function renderTable(data, displayColumns) {
-  csvTable.innerHTML = '';
-  if (data.length === 0) return;
+  csvTable.innerHTML = '';
+  if (data.length === 0) return;
 
-  const thead = document.createElement('thead');
-  const headerRow = document.createElement('tr');
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
 
-  displayColumns.forEach(col => {
-    const th = document.createElement('th');
-    th.textContent = col;
-    th.classList.add('sortable');
-    th.addEventListener('click', (e) => { if (e.detail===1) toggleSort(col); });
-    th.addEventListener('dblclick', () => removeSort(col));
-    const sp = sortPriority.findIndex(s => s.col===col);
-    if (sp >=0){ const indicator=document.createElement('span'); indicator.classList.add('sort-indicator'); indicator.textContent = sp+1; th.appendChild(indicator);}
-    headerRow.appendChild(th);
-  });
+  displayColumns.forEach(col => {
+    const th = document.createElement('th');
+    th.textContent = col;
+    th.classList.add('sortable');
+    th.addEventListener('click', (e) => { if (e.detail===1) toggleSort(col); });
+    th.addEventListener('dblclick', () => removeSort(col));
+    const sp = sortPriority.findIndex(s => s.col===col);
+    if (sp >=0){ const indicator=document.createElement('span'); indicator.classList.add('sort-indicator'); indicator.textContent = sp+1; th.appendChild(indicator);}
+    headerRow.appendChild(th);
+  });
 
-  // shape_count at end
-  const thCount = document.createElement('th');
-  thCount.textContent = shapeCountCol;
-  thCount.classList.add('sortable');
-  thCount.addEventListener('click', () => toggleSort(shapeCountCol));
-  thCount.addEventListener('dblclick', () => removeSort(shapeCountCol));
-  const spCount = sortPriority.findIndex(s => s.col===shapeCountCol);
-  if(spCount>=0){ const indicator=document.createElement('span'); indicator.classList.add('sort-indicator'); indicator.textContent=spCount+1; thCount.appendChild(indicator);}
-  headerRow.appendChild(thCount);
+  // shape_count at end
+  const thCount = document.createElement('th');
+  thCount.textContent = shapeCountCol;
+  thCount.classList.add('sortable');
+  thCount.addEventListener('click', () => toggleSort(shapeCountCol));
+  thCount.addEventListener('dblclick', () => removeSort(shapeCountCol));
+  const spCount = sortPriority.findIndex(s => s.col===shapeCountCol);
+  if(spCount>=0){ const indicator=document.createElement('span'); indicator.classList.add('sort-indicator'); indicator.textContent=spCount+1; thCount.appendChild(indicator);}
+  headerRow.appendChild(thCount);
 
-  thead.appendChild(headerRow);
-  csvTable.appendChild(thead);
+  thead.appendChild(headerRow);
+  csvTable.appendChild(thead);
 
 // Table body
 const tbody = document.createElement('tbody');
@@ -382,43 +382,59 @@ const tbody = document.createElement('tbody');
 // --- Determine color grouping logic ---
 let colorKeyFn;
 if (sortPriority.length > 0) {
-  // If sorted, color by sorted columns combo
-  const sortCols = sortPriority
-    .map(s => s.col)
-    .filter(c => c !== shapeCountCol);  
-  colorKeyFn = row => sortCols.map(c => row[c] ?? "").join("|");
+  // If sorted, color by sorted columns combo
+  const sortCols = sortPriority
+    .map(s => s.col)
+    .filter(c => c !== shapeCountCol);  
+  colorKeyFn = row => sortCols.map(c => row[c] ?? "").join("|");
 } else {
-  // Otherwise color by all selected columns combo
+  // Otherwise color by all selected columns combo
 colorKeyFn = row => displayColumns
-  .filter(c => c !== shapeCountCol)
-  .map(c => row[c] ?? "")
-  .join("|");
+  .filter(c => c !== shapeCountCol)
+  .map(c => row[c] ?? "")
+  .join("|");
 }
 
 // Get unique group keys
 const uniqueKeys = [...new Set(data.map(colorKeyFn))];
 const colorMap = new Map();
 uniqueKeys.forEach((key, i) => {
-  colorMap.set(key, rainbowColors[i % rainbowColors.length]);
+  colorMap.set(key, rainbowColors[i % rainbowColors.length]);
 });
 
-// Apply colors row-by-row
-data.forEach(row => {
-  const tr = document.createElement('tr');
-  const rowColor = colorMap.get(colorKeyFn(row));
-  tr.style.backgroundColor = rowColor + "20"; // add transparency (20 hex ≈ 12%)
-  
-  displayColumns.forEach(col => {
-    const td = document.createElement('td');
-    td.textContent = row[col] ?? '';
-    tr.appendChild(td);
-  });
+let previousRow = null; // To track the previous row's data
 
-    const tdCount = document.createElement('td');
-    tdCount.textContent = row[shapeCountCol] ?? 0; 
-    tr.appendChild(tdCount);
-  
-  tbody.appendChild(tr);
+// Apply colors and new display logic row-by-row
+data.forEach(row => {
+  const tr = document.createElement('tr');
+  const rowColor = colorMap.get(colorKeyFn(row));
+  tr.style.backgroundColor = rowColor + "20"; // add transparency (20 hex ≈ 12%)
+  
+  let isChainBroken = false; // Flag to check if the sequence of identical values is broken
+
+  displayColumns.forEach(col => {
+    const td = document.createElement('td');
+    let showValue = true;
+
+    // If it's not the first row and the chain of identical values isn't broken
+    if (previousRow && !isChainBroken) {
+      if (row[col] === previousRow[col]) {
+        showValue = false; // Value is the same as the one above, hide it
+      } else {
+        isChainBroken = true; // Chain is broken, show this value and all subsequent ones in the row
+      }
+    }
+    
+    td.textContent = showValue ? (row[col] ?? '') : '';
+    tr.appendChild(td);
+  });
+
+    const tdCount = document.createElement('td');
+    tdCount.textContent = row[shapeCountCol] ?? 0; 
+    tr.appendChild(tdCount);
+  
+  tbody.appendChild(tr);
+  previousRow = row; // Update previousRow for the next iteration
 });
 
 csvTable.appendChild(tbody);
