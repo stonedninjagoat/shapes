@@ -107,11 +107,14 @@ th.sortable { cursor: pointer; text-decoration: underline; }
 <h2>Shapes Table</h2>
 
 <div id="controls">
-  <label class="file-btn">
-    Choose File
-    <input type="file" id="csvFile" accept=".csv" />
-  </label>
-  <button id="toggleSelectAll">Select All</button>
+    <label class="file-btn">
+        Choose File
+        <input type="file" id="csvFile" accept=".csv" />
+    </label>
+    <button id="toggleSelectAll">Select All</button>
+    <label style="margin-left: 20px;">
+        <input type="checkbox" id="proportionalCountToggle"> Proportional Count (%)
+    </label>
 </div>
 
 <div id="column-checkboxes"></div>
@@ -130,6 +133,7 @@ let originalData = [];
 let headers = [];
 let sortPriority = [];
 let selectedOrder = []; 
+let proportionalCountEnabled = false;
 
 const shapeCountCol = 'count';
 const rainbowColors = [
@@ -144,6 +148,12 @@ const csvTable = document.getElementById('csvTable');
 const rowNumbersDiv = document.getElementById('rowNumbers');
 const tableWrapperDiv = document.querySelector('.table-wrapper');
 const defaultCsvUrl = 'https://raw.githubusercontent.com/stonedninjagoat/shapes/refs/heads/main/shapesEvery.csv';
+const proportionalCountToggle = document.getElementById('proportionalCountToggle');
+
+proportionalCountToggle.addEventListener('change', (e) => {
+    proportionalCountEnabled = e.target.checked;
+    updateTable();
+});
 
 function loadCsvFromUrl(url) {
   Papa.parse(url, {
@@ -313,9 +323,9 @@ toggleButton.addEventListener('click', () => {
 
 // Update table with aggregation and sorting
 function updateTable() {
-const selectedColumns = selectedOrder.filter(col =>
-  checkboxesDiv.querySelector(`input[value="${col}"]`).checked
-);
+	const selectedColumns = selectedOrder.filter(col =>
+	  checkboxesDiv.querySelector(`input[value="${col}"]`).checked
+	);
 
   // Sync color selections with visible columns
   renderColorCheckboxes(selectedColumns);
@@ -328,18 +338,20 @@ const selectedColumns = selectedOrder.filter(col =>
 
   // Aggregate shape_count based on selected columns
   const groupedData = {};
-  originalData.forEach(row => {
-    const key = selectedColumns.map(col => row[col] ?? '').join('|');
-    if (!groupedData[key]) {
-      groupedData[key] = { ...row };
-      groupedData[key][shapeCountCol] = 0;
-    } else {
-    // Keep formula_ext as the first row's value (or merge if needed)
-  }
-    groupedData[key][shapeCountCol] += row[shapeCountCol];
-  });
+  let grandTotalCount = 0; // The overall total count is still useful for context/debugging, but not for proportional calc here
+    originalData.forEach(row => {
+        const key = selectedColumns.map(col => row[col] ?? '').join('|');
+        if (!groupedData[key]) {
+            groupedData[key] = { ...row };
+            groupedData[key][shapeCountCol] = 0;
+        } else {
+        // Keep formula_ext as the first row's value (or merge if needed)
+    }
+        groupedData[key][shapeCountCol] += row[shapeCountCol];
+        grandTotalCount += row[shapeCountCol]; // Accumulate total count
+    });
 
-  let displayData = Object.values(groupedData);
+    let displayData = Object.values(groupedData);
 
   // Apply multi-level sort
   if (sortPriority.length > 0) {
@@ -357,25 +369,76 @@ const selectedColumns = selectedOrder.filter(col =>
         if (keyA < keyB) return s.dir === 'asc' ? -1 : 1;
         if (keyA > keyB) return s.dir === 'asc' ? 1 : -1;
       } 
-else if (col === 'closed_formula_ext' || col === 'closed_fret_numbers' || col === 'open_formula_ext' || col === 'open_fret_numbers' ) {
-  const cleanValA = String(valA).replace(/-/g, '');
-  const cleanValB = String(valB).replace(/-/g, '');
+		// --- Custom Fret Numbers Sort ---
+		else if (col === 'closed_fret_numbers' || col === 'open_fret_numbers') {
+		        
+		        // Helper function to find the primary sort key
+		        const getSortKeyAndList = (val) => {
+		            // 1. Replace all dashes with a unique non-fret value (-1) for internal consistency
+		            const cleanVal = String(val).replace(/-/g, '-1');
+		            const list = cleanVal.split(',').map(v => Number(v.trim()));
+		            
+		            let firstFretIndex = list.length; // Use list.length (a high index) for lists of only dashes/empty
+		            let firstFretValue = -Infinity; // Use -Infinity as the lowest possible value
+		            
+		            // Find the index and value of the first non-dash number (which means value >= 0)
+		            for (let i = 0; i < list.length; i++) {
+		                const num = list[i];
+		                if (num > 0) {
+		                    firstFretIndex = i;
+		                    firstFretValue = num;
+		                    break;
+		                }
+		            }
+		            
+		            // Composite Key: Position * 1000 + Value. (1000 is safely larger than max expected fret number)
+		            // This ensures index (position) is the primary sort factor.
+		            const compositeKey = firstFretIndex * 1000 + firstFretValue;
 
-  const listA = cleanValA.split(',').map(v => Number(v.trim()));
-  const listB = cleanValB.split(',').map(v => Number(v.trim()));
-  
-  const len = Math.max(listA.length, listB.length);
-  
-  for (let i = 0; i < len; i++) {
-    // Treat missing numbers as -Infinity for consistent comparison
-    const aNum = listA[i] ?? -Infinity;
-    const bNum = listB[i] ?? -Infinity;
-    
-    if (aNum < bNum) return s.dir === 'asc' ? -1 : 1;
-    if (aNum > bNum) return s.dir === 'asc' ? 1 : -1;
-  }
-  continue; // if all equal, check next priority column
-}
+		            return { compositeKey, list };
+		        };
+
+		        const { compositeKey: keyA, list: listA } = getSortKeyAndList(valA);
+		        const { compositeKey: keyB, list: listB } = getSortKeyAndList(valB);
+
+		        // 1. Compare the Composite Key (Primary: Position, Secondary: Value)
+		        if (keyA < keyB) return s.dir === 'asc' ? -1 : 1;
+		        if (keyA > keyB) return s.dir === 'asc' ? 1 : -1;
+
+		        // 2. Tertiary Sort: If keys are equal, compare position-by-position
+		        const len = Math.max(listA.length, listB.length);
+		        
+		        for (let i = 0; i < len; i++) {
+		            // Use -Infinity for list elements that don't exist (e.g., list [1] vs [1,2])
+		            // This ensures shorter lists sort before longer lists when all elements match.
+		            const aNum = listA[i] ?? -Infinity;
+		            const bNum = listB[i] ?? -Infinity;
+		            
+		            if (aNum < bNum) return s.dir === 'asc' ? -1 : 1;
+		            if (aNum > bNum) return s.dir === 'asc' ? 1 : -1;
+		        }
+		        continue; // All values are equal, check next priority column
+		}
+
+	else if (col === 'closed_formula_ext' || col === 'open_formula_ext') {
+	  const cleanValA = String(valA).replace(/-/g, '');
+	  const cleanValB = String(valB).replace(/-/g, '');
+
+	  const listA = cleanValA.split(',').map(v => Number(v.trim()));
+	  const listB = cleanValB.split(',').map(v => Number(v.trim()));
+	  
+	  const len = Math.max(listA.length, listB.length);
+	  
+	  for (let i = 0; i < len; i++) {
+		// Treat missing numbers as -Infinity for consistent comparison
+		const aNum = listA[i] ?? -Infinity;
+		const bNum = listB[i] ?? -Infinity;
+		
+		if (aNum < bNum) return s.dir === 'asc' ? -1 : 1;
+		if (aNum > bNum) return s.dir === 'asc' ? 1 : -1;
+	  }
+	  continue; // if all equal, check next priority column
+	} 
 
       else {
         // Default string comparison
@@ -387,9 +450,9 @@ else if (col === 'closed_formula_ext' || col === 'closed_fret_numbers' || col ==
   });
 }
 
-  renderTable(displayData, selectedColumns);
-  renderRowNumbers(displayData.length);
-  renderSortInstructions();
+    renderTable(displayData, selectedColumns);
+	  renderRowNumbers(displayData.length);
+	  renderSortInstructions();
 }
 
 // Render row numbers
@@ -416,6 +479,8 @@ function renderTable(data, displayColumns) {
   const thead = document.createElement('thead');
   const headerRow = document.createElement('tr');
 
+  const countHeader = proportionalCountEnabled ? `${shapeCountCol} (%)` : shapeCountCol;
+
   displayColumns.forEach(col => {
     const th = document.createElement('th');
     th.textContent = col;
@@ -429,7 +494,7 @@ function renderTable(data, displayColumns) {
 
   // shape_count at end
   const thCount = document.createElement('th');
-  thCount.textContent = shapeCountCol;
+  thCount.textContent = countHeader;
   thCount.classList.add('sortable');
   thCount.addEventListener('click', (e) => { if (e.detail===1) toggleSort(shapeCountCol); });
   thCount.addEventListener('dblclick', () => removeSort(shapeCountCol));
@@ -442,62 +507,144 @@ function renderTable(data, displayColumns) {
 
 // Table body
 const tbody = document.createElement('tbody');
+const grandTotal = data.map(r => r[shapeCountCol]).reduce((acc, val) => acc + val, 0);
 
 // --- Determine color grouping logic ---
-	let colorKeyFn;
-	let columnsForColoring = [];
+let colorKeyFn;
+let columnsForColoring = [];
 
-  if (sortPriority.length > 0) {
-    // 1. Prioritize manually selected color columns
-    columnsForColoring = sortPriority.map(s => s.col);
-  } else {
-    // 3. Final fallback to all displayed columns
-    columnsForColoring = displayColumns;
-  }
-  
-  const finalColorCols = columnsForColoring.filter(c => c !== shapeCountCol);
-  colorKeyFn = row => finalColorCols.map(c => row[c] ?? "").join("|");
+if (sortPriority.length > 0) {
+  // 1. Prioritize manually selected color columns
+  columnsForColoring = sortPriority.map(s => s.col);
+} else {
+  // 3. Final fallback to all displayed columns
+  columnsForColoring = displayColumns;
+}
+
+const finalColorCols = columnsForColoring.filter(c => c !== shapeCountCol);
+colorKeyFn = row => finalColorCols.map(c => row[c] ?? "").join("|");
 
 // Get unique group keys
 const uniqueKeys = [...new Set(data.map(colorKeyFn))];
 const colorMap = new Map();
 uniqueKeys.forEach((key, i) => {
-  colorMap.set(key, rainbowColors[i % rainbowColors.length]);
+  colorMap.set(key, rainbowColors[i % rainbowColors.length]);
 });
 
 let previousRow = null; // To track the previous row's data
 
+	// --- Proportional Calculation Setup --- 
+	let currentGroupTotal = 0;
+	let currentGroupIndex = 0;
+	const groupTotalMap = new Map(); // Store pre-calculated group totals
+
+	if (proportionalCountEnabled && sortPriority.length > 0) {
+		// 1. Determine the "group-defining" columns (all but the lowest sort priority)
+		const groupDefiningCols = sortPriority.slice(0, -1).map(s => s.col);
+
+		if (groupDefiningCols.length > 0) {
+			let tempGroupKey = '';
+			let tempGroupTotal = 0;
+
+			for (let i = 0; i < data.length; i++) {
+				const row = data[i];
+
+				// Create a key based on all columns *except* the lowest sort priority
+				const newGroupKey = groupDefiningCols.map(col => row[col] ?? '').join('|');
+
+				// If the group key changes OR it's the first row
+				if (newGroupKey !== tempGroupKey || i === 0) {
+					if (i > 0) {
+						// Store the total for the *previous* group
+						groupTotalMap.set(tempGroupKey, tempGroupTotal);
+					}
+
+					// Start a new group
+					tempGroupKey = newGroupKey;
+					tempGroupTotal = 0;
+				}
+
+				// Add to the current group's total
+				tempGroupTotal += row[shapeCountCol];
+
+				// Special handling for the last group
+				if (i === data.length - 1) {
+					groupTotalMap.set(tempGroupKey, tempGroupTotal);
+				}
+			}
+		}
+	}
+
 // Apply colors and new display logic row-by-row
-data.forEach(row => {
-  const tr = document.createElement('tr');
-  const rowColor = colorMap.get(colorKeyFn(row));
-  tr.style.backgroundColor = rowColor + "20"; // add transparency (20 hex ≈ 12%)
-  
-  let isChainBroken = false; // Flag to check if the sequence of identical values is broken
+data.forEach((row, rowIndex) => {
+      const tr = document.createElement('tr');  
+	  tr._rowData = row;
+	  
+	  const rowColor = colorMap.get(colorKeyFn(row));
+	  tr._rowColor = rowColor;  // <--- store for later
+	  tr.style.backgroundColor = rowColor + "20"; // add transparency (≈12%)
+		  
+  		let isChainBroken = false; // Flag to check if the sequence of identical values is broken
+		
+	displayColumns.forEach((col, colIndex) => {
+	  const td = document.createElement('td');
+	  let showValue = true;
 
-  displayColumns.forEach(col => {
-    const td = document.createElement('td');
-    let showValue = true;
+	  if (previousRow) {
+		if (row[col] === previousRow[col]) {
+		  showValue = false;
+		  td.style.backgroundColor = '#ffffff'; 
+		}
+	  }
 
-    // If it's not the first row and the chain of identical values isn't broken
-    if (previousRow && !isChainBroken) {
-      if (row[col] === previousRow[col]) {
-        showValue = false; // Value is the same as the one above, hide it
-      } else {
-        isChainBroken = true; // Chain is broken, show this value and all subsequent ones in the row
-      }
-    }
-    
-    td.textContent = showValue ? (row[col] ?? '') : '';
-    tr.appendChild(td);
-  });
+	  td.textContent = showValue ? (row[col] ?? '') : '';
+	  
+	  tr.appendChild(td);
+	});
 
-    const tdCount = document.createElement('td');
-    tdCount.textContent = row[shapeCountCol] ?? 0; 
-    tr.appendChild(tdCount);
-  
-  tbody.appendChild(tr);
-  previousRow = row; // Update previousRow for the next iteration
+    const tdCount = document.createElement('td');
+    let countValue = row[shapeCountCol] ?? 0;
+
+	if (proportionalCountEnabled) {
+		let total = 0;
+
+		// Determine which columns define the group (all but last sort-priority column)
+		const groupDefiningCols = sortPriority.slice(0, -1).map(s => s.col);
+
+		if (groupDefiningCols.length > 0) {
+			// N >= 2: Use sub-group total
+			// Retrieve pre-calculated group total
+			const groupKey = groupDefiningCols.map(col => row[col] ?? '').join('|');
+			total = groupTotalMap.get(groupKey) || 0;
+		} else {
+			// N = 0 or N = 1: Use the grand total
+			total = grandTotal;
+		}
+
+		if (total > 0) {
+			// Calculate and display percentage, rounded to one decimal place
+			const percentage = (countValue / total) * 100;
+			tdCount.textContent = percentage.toFixed(1);
+		} else {
+			tdCount.textContent = '0.0';
+		}
+	} else {
+		tdCount.textContent = countValue;
+	}
+	
+	// --- GRAYSCALE COLORING BASED ON VALUE ---
+	let maxCount = Math.max(...data.map(r => r[shapeCountCol]));
+	let normalized = countValue / maxCount; // 0-1
+	let alpha = Math.min(Math.max(normalized, 0), 1); // clamp 0-1
+	let grayscale = Math.round(255 * (1 - normalized));
+	
+	tdCount.style.backgroundColor = `rgb(${grayscale},${grayscale},${grayscale})`;
+	tdCount.style.color = normalized > 0.5 ? 'white' : 'black';
+	
+	tr.appendChild(tdCount);
+
+	tbody.appendChild(tr);
+	previousRow = row; // Update previousRow for the next iteration
 });
 
 csvTable.appendChild(tbody);
@@ -548,10 +695,14 @@ function renderSortInstructions(){
     return cb && cb.checked;
   });
 
+  let colorSource = '';
   if (sortPriority.length > 0) {
-    coloringCols = sortPriority.map(s => s.col).filter(c => c !== shapeCountCol && selectedColumns.includes(c));
+      const primaryCol = sortPriority[0].col;
+      coloringCols = [primaryCol];
+      colorSource = `Primary Sort: ${primaryCol}`;
   } else {
-    coloringCols = selectedColumns.filter(c => c !== shapeCountCol);
+      coloringCols = selectedColumns.filter(c => c !== shapeCountCol);
+      colorSource = 'All Visible Columns (No Sort Active)';
   }
 
   if (coloringCols.length > 0) {
