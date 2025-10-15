@@ -83,12 +83,6 @@ body {
   padding: 2px 5px;
 }
 
-.count-col-bg {
-  background-color: #e6ffe6; /* Light Green */
-  border-radius: 4px;
-  padding: 2px 5px;
-}
-
 .checkbox-section {
   margin: 10px 0;
   padding: 5px;
@@ -475,8 +469,6 @@ function renderCheckboxes() {
         label.classList.add('closed-col-bg');
     } else if (header.includes('open_')) {
         label.classList.add('open-col-bg');
-    } else if (header === shapeCountCol) {
-        label.classList.add('count-col-bg');
     } else {
 		label.classList.add('default-col-bg');
 	}
@@ -696,8 +688,6 @@ checkbox.addEventListener('change', (e) => {
         label.classList.add('closed-col-bg');
     } else if (col.includes('open_')) {
         label.classList.add('open-col-bg');
-    } else if (header === shapeCountCol) {
-        label.classList.add('count-col-bg');
     } else { 
 		label.classList.add('default-col-bg');
 	}
@@ -1512,6 +1502,7 @@ function renderSortInstructions(){
 </body>
 
 </html>
+
 
 
 
