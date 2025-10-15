@@ -24,7 +24,7 @@ body {
 }
 
 .file-btn, button {
-  display: inline-block;   /* only as wide as content */
+  display: inline-block;
   width: auto;
   font-family: 'Ubuntu Mono', monospace;
   font-size: 14px;
@@ -54,31 +54,72 @@ body {
 }
 
 #column-checkboxes, #sort-instructions { margin: 10px 0; }
+#color-checkboxes-container label,
+#sort-checkboxes-container label,
+#group-checkboxes-container label { margin-right: 15px; }
+#hide-checkboxes-container label {
+    margin-right: 15px; /* Ensure spacing */
+    display: inline-flex; /* Helps with background application */
+    align-items: center;
+}
 
-#color-checkboxes-container label { margin-right: 15px; }
+.closed-col-bg {
+  background-color: #e6f0ff; /* Light Blue */
+  border-radius: 4px;
+  padding: 2px 5px; 
+}
+
+.open-col-bg {
+  background-color: #ffe6e6; /* Light Red */
+  border-radius: 4px;
+  padding: 2px 5px;
+}
+
+
+.checkbox-section {
+  margin: 10px 0;
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #f9f9f9;
+}
+
+.checkbox-section-title {
+  font-weight: bold;
+  margin-right: 10px;
+}
 
 .table-container {
   display: flex;
-  flex: 1;
-  overflow: hidden;
+  margin-top: 20px;
+  flex-grow: 1; 
 }
 
 .row-numbers {
   text-align: right;
   margin-right: 5px;
   font-size: 12px;
-  line-height: 22px;
-  overflow-y: auto;
+  line-height: 1;
+  padding-top: 32px;
+}
+
+.row-numbers > div {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 .table-wrapper {
   flex: 1;
-  overflow: auto;
+  overflow-y: auto; 
+  overflow-x: auto; 
+
 }
 
 table {
   border-collapse: collapse;
-  width: 100%;   /* table fills wrapper width */
+  width: 100%;
   table-layout: auto;
   font-family: 'Ubuntu Mono', monospace;
 }
@@ -100,6 +141,30 @@ thead th {
 
 th.sortable { cursor: pointer; text-decoration: underline; }
 .sort-indicator { font-size: 8px; color: gray; margin-left: 2px; }
+
+.fullscreen-mode {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: white;
+  z-index: 1000;
+  padding: 10px;
+  /* Hide unnecessary elements */
+  display: flex; 
+  flex-direction: column;
+}
+
+.fullscreen-mode > *:not(.table-container) {
+  display: none !important;
+}
+
+.fullscreen-mode .table-container {
+  flex-grow: 1;
+  margin-top: 0 !important;
+}
+
 </style>
 </head>
 <body>
@@ -111,15 +176,57 @@ th.sortable { cursor: pointer; text-decoration: underline; }
         Choose File
         <input type="file" id="csvFile" accept=".csv" />
     </label>
-    <button id="toggleSelectAll">Select All</button>
+		<span id="fileNameDisplay" style="margin-left: 5px; font-style: italic;">(Using default file)</span> <button id="autoArrangeBtn">Auto-Arrange Table</button>
     <label style="margin-left: 20px;">
         <input type="checkbox" id="proportionalCountToggle"> Proportional Count (%)
     </label>
+	<button id="fullscreenBtn" style="margin-left: 20px;">Fullscreen Table</button> </div>
+	<button id="exportCsvBtn">Export CSV</button> </div>
 </div>
 
-<div id="column-checkboxes"></div>
+<div style="margin: 10px 0;">
+  <label>
+    <input type="checkbox" id="hideInsignificantToggle"> Hide Insignificant Rows (< 1%)
+  </label>
+</div>
+
+<div class="checkbox-section" id="display-checkboxes-container">
+  <span class="checkbox-section-title">Display Columns:</span>
+  <button id="toggleSelectAll" style="margin-left: 10px; padding: 2px 8px; font-size: 12px;">Select All</button>
+  <div id="column-checkboxes" style="display: inline;"></div>
+</div>
+
+<div class="checkbox-section" id="color-checkboxes-container" style="display: none;">
+  <span class="checkbox-section-title">Color By:</span>
+  <button id="toggleColorAll" style="margin-left: 10px; padding: 2px 8px; font-size: 12px;">Select All</button>
+  <div id="color-checkboxes" style="display: inline;"></div>
+</div>
+
+<div class="checkbox-section" id="sort-checkboxes-container" style="display: none;">
+  <span class="checkbox-section-title">Sort By:</span>
+  <button id="toggleSortAll" style="margin-left: 10px; padding: 2px 8px; font-size: 12px;">Select All</button>
+  <div id="sort-checkboxes" style="display: inline;"></div>
+</div>
+
+<div class="checkbox-section" id="group-checkboxes-container" style="display: none;">
+  <span class="checkbox-section-title">Group Props By:</span>
+  <button id="toggleGroupAll" style="margin-left: 10px; padding: 2px 8px; font-size: 12px;">Select All</button>
+  <div id="group-checkboxes" style="display: inline;"></div>
+</div>
+
+<div class="checkbox-section" id="hide-checkboxes-container" style="display: none;">
+  <span class="checkbox-section-title">Hide Columns:</span>
+  <button id="toggleHideAll" style="margin-left: 10px; padding: 2px 8px; font-size: 12px;">Select All</button>
+  <div id="hide-checkboxes" style="display: inline;"></div>
+</div>
+
+<div class="checkbox-section" id="filter-container" style="display: none;">
+  <span class="checkbox-section-title">Filter by Value:</span>
+  <button id="clearAllFilters" style="margin-left: 10px; padding: 2px 8px; font-size: 12px;">Clear All</button>
+  <div id="filter-dropdowns" style="margin-top: 10px;"></div>
+</div>
+
 <div id="sort-instructions"></div>
-<div id="color-checkboxes-container" style="margin: 10px 0;"></div>
 
 <div class="table-container">
   <div class="row-numbers" id="rowNumbers"></div>
@@ -132,8 +239,16 @@ th.sortable { cursor: pointer; text-decoration: underline; }
 let originalData = [];
 let headers = [];
 let sortPriority = [];
-let selectedOrder = []; 
+let selectedOrder = [];
+let colorByColumns = [];
+let groupByColumns = [];
+let hiddenColumns = [];
 let proportionalCountEnabled = false;
+let isAutoArranged = false;
+let originalHeaderOrder = [];
+let autoArrangedHeaderOrder = [];
+let filtersByColumn = {}; 
+let hideInsignificant = false;
 
 const shapeCountCol = 'count';
 const rainbowColors = [
@@ -149,11 +264,83 @@ const rowNumbersDiv = document.getElementById('rowNumbers');
 const tableWrapperDiv = document.querySelector('.table-wrapper');
 const defaultCsvUrl = 'https://raw.githubusercontent.com/stonedninjagoat/shapes/refs/heads/main/shapesEvery.csv';
 const proportionalCountToggle = document.getElementById('proportionalCountToggle');
+const hideInsignificantToggle = document.getElementById('hideInsignificantToggle');
+const fullscreenBtn = document.getElementById('fullscreenBtn');
+const exportCsvBtn = document.getElementById('exportCsvBtn'); // **Add this line**
 
 proportionalCountToggle.addEventListener('change', (e) => {
     proportionalCountEnabled = e.target.checked;
     updateTable();
 });
+
+hideInsignificantToggle.addEventListener('change', (e) => {
+    hideInsignificant = e.target.checked;
+    updateTable();
+});
+
+fullscreenBtn.addEventListener('click', () => {
+    const body = document.body;
+    body.classList.toggle('fullscreen-mode');
+    fullscreenBtn.textContent = body.classList.contains('fullscreen-mode') ? 'Exit Fullscreen' : 'Fullscreen Table';
+});
+
+exportCsvBtn.addEventListener('click', () => {
+  exportTableDataToCsv();
+});
+
+function exportTableDataToCsv() {
+  const visibleColumns = selectedOrder.filter(col => !hiddenColumns.includes(col));
+  const finalColumns = [...visibleColumns, shapeCountCol];
+  let exportData = Object.values(originalData).map(row => ({...row})); 
+  
+  // Re-aggregate based on current selected columns
+  const columnsForAggregation = selectedOrder.filter(col => !hiddenColumns.includes(col));
+  const groupedData = {};
+  exportData.forEach(row => {
+    const key = columnsForAggregation.map(col => row[col] ?? '').join('|');
+    if (!groupedData[key]) {
+      groupedData[key] = { ...row };
+      groupedData[key][shapeCountCol] = 0;
+    }
+    groupedData[key][shapeCountCol] += row[shapeCountCol];
+  });
+  
+  exportData = Object.values(groupedData);
+  
+  // Apply filters
+  if (Object.keys(filtersByColumn).length > 0) {
+    exportData = exportData.filter(row => {
+      for (const col in filtersByColumn) {
+        const selectedValues = filtersByColumn[col];
+        if (selectedValues.length > 0) {
+          const rowValue = String(row[col] ?? '');
+          if (!selectedValues.includes(rowValue)) {
+            return false;
+          }
+        }
+      }
+      return true;
+    });
+  }
+
+  // Use PapaParse to unparse the data
+  const csv = Papa.unparse(exportData, {
+      columns: finalColumns 
+  });
+
+  // Download the CSV file
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  if (link.download !== undefined) { 
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'shapes_export.csv');
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+  }
+}
 
 function loadCsvFromUrl(url) {
   Papa.parse(url, {
@@ -167,8 +354,12 @@ function loadCsvFromUrl(url) {
         return row;
       });
       headers = results.meta.fields.filter(f => f !== shapeCountCol);
+	  originalHeaderOrder = [...headers];  
       selectedOrder = [];
+	  isAutoArranged = false; 
+	  calculateAutoArrangedOrder(); 
       renderCheckboxes();
+	  updateSelectAllButtonText();
       updateTable();
     }
   });
@@ -178,7 +369,12 @@ loadCsvFromUrl(defaultCsvUrl);
 
 csvFileInput.addEventListener('change', (e) => {
   const file = e.target.files[0];
-  if (!file) return;
+  if (!file) {
+	fileNameDisplay.textContent = '(No file selected)';
+	return;
+  }
+
+	fileNameDisplay.textContent = `(${file.name})`; 
 
   Papa.parse(file, {
     header: true,
@@ -190,33 +386,50 @@ csvFileInput.addEventListener('change', (e) => {
         return row;
       });
       headers = results.meta.fields.filter(f => f !== shapeCountCol);
+	  originalHeaderOrder = [...headers];  
       selectedOrder = [];
+	  isAutoArranged = false; 
+	  calculateAutoArrangedOrder(); 
       renderCheckboxes();
       updateTable();
     }
   });
 });
-  
-// Upload CSV
-csvFileInput.addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
 
-  Papa.parse(file, {
-    header: true,
-    skipEmptyLines: true,
-    dynamicTyping: false,
-    complete: function(results) {
-      originalData = results.data.map(row => {
-        row[shapeCountCol] = Number(row[shapeCountCol] || 0);
-        return row;
-      });
-      headers = results.meta.fields.filter(f => f !== shapeCountCol);
-      selectedOrder = [];
-      renderCheckboxes();
-      updateTable();
-    }
+// Calculate auto-arranged order based on unique value counts
+function calculateAutoArrangedOrder() {
+  const uniqueCounts = headers.map(header => {
+    const uniqueValues = new Set(originalData.map(row => row[header]));
+    return { header, count: uniqueValues.size };
   });
+  
+  // Sort by count (ascending - fewest unique values first)
+  uniqueCounts.sort((a, b) => a.count - b.count);
+  
+  autoArrangedHeaderOrder = uniqueCounts.map(item => item.header);
+}
+
+// Auto-Arrange button handler
+const autoArrangeBtn = document.getElementById('autoArrangeBtn');
+autoArrangeBtn.addEventListener('click', () => {
+  isAutoArranged = !isAutoArranged;
+  
+  // Store which columns are currently selected/displayed
+  const currentlySelected = new Set(selectedOrder);
+  
+  if (isAutoArranged) {
+    headers = [...autoArrangedHeaderOrder];
+    autoArrangeBtn.textContent = 'Reset to Original Order';
+  } else {
+    headers = [...originalHeaderOrder];
+    autoArrangeBtn.textContent = 'Auto-Arrange Table';
+  }
+  
+  // Rebuild selectedOrder in the new header order, keeping selections
+  selectedOrder = headers.filter(h => currentlySelected.has(h));
+  
+  renderCheckboxes();
+  updateTable();
 });
 
 // Render column checkboxes
@@ -224,8 +437,20 @@ function renderCheckboxes() {
   checkboxesDiv.innerHTML = '';
   headers.forEach(header => {
     const label = document.createElement('label');
-    label.innerHTML = `<input type="checkbox" value="${header}"> ${header}`;
+	const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = header;
+	checkbox.checked = selectedOrder.includes(header);
+    label.appendChild(checkbox);
+    label.appendChild(document.createTextNode(` ${header}`));
     checkboxesDiv.appendChild(label);
+	
+	if (header.includes('closed_')) {
+        label.classList.add('closed-col-bg');
+    } else if (header.includes('open_')) {
+        label.classList.add('open-col-bg');
+    }
+	
   });
 
   checkboxesDiv.querySelectorAll('input[type="checkbox"]').forEach(cb => {
@@ -233,93 +458,332 @@ function renderCheckboxes() {
     const col = e.target.value;
 
     if (e.target.checked) {
-      // Add column to end of selection order
       selectedOrder.push(col);
     } else {
-      // Remove column if unchecked
-      selectedOrder = selectedOrder.filter(c => c !== col);
-      // Also remove from sortPriority if present
-      sortPriority = sortPriority.filter(s => s.col !== col);
+
+      selectedOrder = selectedOrder.filter(c => c !== col);
+      sortPriority = sortPriority.filter(s => s.col !== col);
+      
+      colorByColumns = colorByColumns.filter(c => c !== col);
+      groupByColumns = groupByColumns.filter(c => c !== col);
+      delete filtersByColumn[col];
+
+
     }
 
+	updateSelectAllButtonText(); 
     updateTable();
   });
 });
-
+updateSelectAllButtonText();
 }
 
-// Render color selection checkboxes
-function renderColorCheckboxes(visibleCols) {
-  const container = document.getElementById('color-checkboxes-container');
-  container.innerHTML = ''; // Clear existing checkboxes
+function updateSelectAllButtonText() {
+  const checkboxes = checkboxesDiv.querySelectorAll('input[type="checkbox"]');
+  const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+  document.getElementById('toggleSelectAll').textContent = allChecked ? 'Deselect All' : 'Select All';
+}
 
-  if (visibleCols.length === 0) {
+function autoSelectDisplayColumn(col) {
+  const displayCheckbox = checkboxesDiv.querySelector(`input[value="${col}"]`);
+  if (displayCheckbox && !displayCheckbox.checked) {
+    displayCheckbox.checked = true;
+    if (!selectedOrder.includes(col)) {
+      selectedOrder.push(col);
+    }
+    updateSelectAllButtonText(); // Update the toggle text for display columns
+  }
+}
+
+
+// Render color, sort, and group selection checkboxes
+function renderSpecialCheckboxes(visibleCols) {
+	const allDisplayCols = [...visibleCols, shapeCountCol];
+
+  // Color By checkboxes
+	renderCheckboxGroup('color', visibleCols, colorByColumns);
+  
+  // Sort By checkboxes
+  renderCheckboxGroup('sort', allDisplayCols, sortPriority.map(s => s.col)); 
+  
+  // Group Props By checkboxes (only visible columns, not count)
+  renderCheckboxGroup('group', visibleCols, groupByColumns);
+  
+  // Hide Columns checkboxes
+  renderCheckboxGroup('hide', allDisplayCols, hiddenColumns); 
+}
+
+function renderCheckboxGroup(type, columns, selectedCols) {
+  const containerId = `${type}-checkboxes-container`;
+  const checkboxesId = `${type}-checkboxes`;
+  const container = document.getElementById(containerId);
+  const checkboxesDiv = document.getElementById(checkboxesId);
+  
+  if (columns.length === 0) {
     container.style.display = 'none';
     return;
   }
   
   container.style.display = 'block';
-  const title = document.createElement('span');
-  title.textContent = 'Color By: ';
-  title.style.fontWeight = 'bold';
-  container.appendChild(title);
-
-  const allColsForColoring = [...visibleCols, shapeCountCol];
+  checkboxesDiv.innerHTML = '';
   
-  // Get current sort priority columns for checking state
-  const sortedCols = sortPriority.map(s => s.col);
-
-  allColsForColoring.forEach(col => {
+  columns.forEach(col => {
     const label = document.createElement('label');
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.value = col;
+    checkbox.checked = selectedCols.includes(col);
     
-    // Check if the column is currently in sortPriority
-    checkbox.checked = sortedCols.includes(col);
-
-    //  Since color/sort are unified, clicking this should remove/add to sortPriority
     checkbox.addEventListener('change', (e) => {
-      if (e.target.checked) {
-        // If checked, add to sortPriority (default to ascending, no 3-limit)
-        if (!sortedCols.includes(col)) {
-             sortPriority.push({ col, dir: 'asc' });
+      const col = e.target.value;
+      
+      if (type === 'color') {
+        if (e.target.checked) {
+          if (!colorByColumns.includes(col)) colorByColumns.push(col);
+		  autoSelectDisplayColumn(col);
+		} else {
+          colorByColumns = colorByColumns.filter(c => c !== col);
         }
-      } else {
-        // If unchecked, remove from sortPriority
-        sortPriority = sortPriority.filter(s => s.col !== col);
-      }
+      } else if (type === 'sort') {
+        if (e.target.checked) {
+          if (!sortPriority.find(s => s.col === col)) {
+            sortPriority.push({ col, dir: 'asc' });
+          }
+        } else {
+          sortPriority = sortPriority.filter(s => s.col !== col);
+        }
+      } else if (type === 'group') {
+        if (e.target.checked) {
+          if (!groupByColumns.includes(col)) groupByColumns.push(col);
+		  autoSelectDisplayColumn(col);
+        } else {
+          groupByColumns = groupByColumns.filter(c => c !== col);
+        }
+      } else if (type === 'hide') {
+		if (e.target.checked) {
+		  if (!hiddenColumns.includes(col)) hiddenColumns.push(col);
+		  
+		  if (col === shapeCountCol) {
+            groupByColumns = [];
+            // Uncheck all group checkboxes visually
+            document.querySelectorAll('#group-checkboxes input[type="checkbox"]').forEach(cb => {
+              cb.checked = false;
+            });
+            // Reset the toggle button text
+            document.getElementById('toggleGroupAll').textContent = 'Select All';
+          }
+
+		  
+		} else {
+		  hiddenColumns = hiddenColumns.filter(c => c !== col);
+	    }
+	  }
+      
       updateTable();
     });
-
+    
     label.appendChild(checkbox);
     label.appendChild(document.createTextNode(` ${col}`));
-    container.appendChild(label);
+    checkboxesDiv.appendChild(label);
+	
+	if (col.includes('closed_')) {
+        label.classList.add('closed-col-bg');
+    } else if (col.includes('open_')) {
+        label.classList.add('open-col-bg');
+    }
+	
   });
 }
 
-// --- Toggle Select All / Deselect All ---
+// --- Toggle Select All buttons ---
 const toggleButton = document.getElementById('toggleSelectAll');
+const toggleColorButton = document.getElementById('toggleColorAll');
+const toggleSortButton = document.getElementById('toggleSortAll');
+const toggleGroupButton = document.getElementById('toggleGroupAll');
+const toggleHideButton = document.getElementById('toggleHideAll');
+const clearAllFiltersBtn = document.getElementById('clearAllFilters');
 
 toggleButton.addEventListener('click', () => {
   const checkboxes = checkboxesDiv.querySelectorAll('input[type="checkbox"]');
   const allChecked = Array.from(checkboxes).every(cb => cb.checked);
 
   if (allChecked) {
-    // Deselect all
     checkboxes.forEach(cb => cb.checked = false);
     selectedOrder = [];
     sortPriority = [];
+    colorByColumns = [];
+    groupByColumns = [];
+	hiddenColumns = [];
     toggleButton.textContent = 'Select All';
   } else {
-    // Select all
     checkboxes.forEach(cb => cb.checked = true);
-    selectedOrder = Array.from(checkboxes).map(cb => cb.value); // update order list
+    selectedOrder = Array.from(checkboxes).map(cb => cb.value);
     toggleButton.textContent = 'Deselect All';
   }
 
   updateTable();
 });
+
+toggleColorButton.addEventListener('click', () => {
+  const checkboxes = document.querySelectorAll('#color-checkboxes input[type="checkbox"]');
+  const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+  
+  checkboxes.forEach(cb => {
+    cb.checked = !allChecked;
+    const col = cb.value;
+    if (!allChecked) {
+      if (!colorByColumns.includes(col)) colorByColumns.push(col);
+    } else {
+      colorByColumns = [];
+    }
+  });
+  
+  toggleColorButton.textContent = allChecked ? 'Select All' : 'Deselect All';
+  updateTable();
+});
+
+toggleSortButton.addEventListener('click', () => {
+  const checkboxes = document.querySelectorAll('#sort-checkboxes input[type="checkbox"]');
+  const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+  
+  if (!allChecked) {
+    sortPriority = [];
+    checkboxes.forEach(cb => {
+      cb.checked = true;
+      sortPriority.push({ col: cb.value, dir: 'asc' });
+    });
+  } else {
+    checkboxes.forEach(cb => cb.checked = false);
+    sortPriority = [];
+  }
+  
+  toggleSortButton.textContent = allChecked ? 'Select All' : 'Deselect All';
+  updateTable();
+});
+
+toggleGroupButton.addEventListener('click', () => {
+  const checkboxes = document.querySelectorAll('#group-checkboxes input[type="checkbox"]');
+  const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+  
+  checkboxes.forEach(cb => {
+    cb.checked = !allChecked;
+    const col = cb.value;
+    if (!allChecked) {
+      if (!groupByColumns.includes(col)) groupByColumns.push(col);
+    } else {
+      groupByColumns = [];
+    }
+  });
+  
+  toggleGroupButton.textContent = allChecked ? 'Select All' : 'Deselect All';
+  updateTable();
+});
+
+toggleHideButton.addEventListener('click', () => {
+  const checkboxes = document.querySelectorAll('#hide-checkboxes input[type="checkbox"]');
+  const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+  
+  checkboxes.forEach(cb => {
+    cb.checked = !allChecked;
+    const col = cb.value;
+    if (!allChecked) {
+      if (!hiddenColumns.includes(col)) hiddenColumns.push(col);
+    } else {
+      hiddenColumns = [];
+    }
+  });
+  
+  toggleHideButton.textContent = allChecked ? 'Select All' : 'Deselect All';
+  updateTable();
+});
+
+clearAllFiltersBtn.addEventListener('click', () => {
+  filtersByColumn = {};
+  updateTable();
+});
+
+// Render filter dropdowns for each selected column
+function renderFilterDropdowns(data, displayColumns) {
+  const filterContainer = document.getElementById('filter-container');
+  const filterDropdownsDiv = document.getElementById('filter-dropdowns');
+  
+  if (displayColumns.length === 0) {
+    filterContainer.style.display = 'none';
+    return;
+  }
+  
+  filterContainer.style.display = 'block';
+  filterDropdownsDiv.innerHTML = '';
+  
+  displayColumns.forEach(col => {
+    // Get unique values in display order
+    const uniqueValues = [];
+    const seen = new Set();
+    
+    data.forEach(row => {
+      const val = String(row[col] ?? '');
+      if (!seen.has(val)) {
+        seen.add(val);
+        uniqueValues.push(val);
+      }
+    });
+    
+    const filterDiv = document.createElement('div');
+    filterDiv.style.marginBottom = '8px';
+    filterDiv.style.display = 'inline-block';
+    filterDiv.style.marginRight = '15px';
+    
+    const label = document.createElement('label');
+    label.textContent = `${col}: `;
+    label.style.marginRight = '5px';
+    label.style.fontWeight = 'bold';
+    
+    const select = document.createElement('select');
+    select.name = col;
+    select.id = `filter-${col}`;
+    select.style.fontFamily = "'Ubuntu Mono', monospace";
+    select.style.fontSize = '12px';
+    
+    // Add "All" option as default
+    const allOption = document.createElement('option');
+    allOption.value = '__ALL__';
+    allOption.textContent = '-- All --';
+    select.appendChild(allOption);
+    
+    // Add unique values
+    uniqueValues.forEach(val => {
+      const option = document.createElement('option');
+      option.value = val;
+      option.textContent = val;
+      
+      // Check if this value is currently selected in filter
+      if (filtersByColumn[col] && filtersByColumn[col].includes(val)) {
+        option.selected = true;
+      }
+      
+      select.appendChild(option);
+    });
+    
+    // Handle selection changes
+    select.addEventListener('change', (e) => {
+      const selectedValue = e.target.value;
+      
+      if (selectedValue === '__ALL__') {
+        // Clear filter for this column
+        delete filtersByColumn[col];
+      } else {
+        // Store as array with single value for consistency
+        filtersByColumn[col] = [selectedValue];
+      }
+      
+      updateTable();
+    });
+    
+    filterDiv.appendChild(label);
+    filterDiv.appendChild(select);
+    filterDropdownsDiv.appendChild(filterDiv);
+  });
+}
 
 // Update table with aggregation and sorting
 function updateTable() {
@@ -327,8 +791,8 @@ function updateTable() {
 	  checkboxesDiv.querySelector(`input[value="${col}"]`).checked
 	);
 
-  // Sync color selections with visible columns
-  renderColorCheckboxes(selectedColumns);
+  // Sync color, sort, and group selections with visible columns
+	renderSpecialCheckboxes(selectedColumns);
 
   if (selectedColumns.length === 0) {
     csvTable.innerHTML = '<tr><td>No columns selected</td></tr>';
@@ -336,22 +800,39 @@ function updateTable() {
     return;
   }
 
-  // Aggregate shape_count based on selected columns
+  // Determine which columns to use for aggregation (visible ones only, or all if grouping is specified)
+  let columnsForAggregation = selectedColumns.filter(col => !hiddenColumns.includes(col));
+  
+  // Aggregate shape_count based on visible columns only
   const groupedData = {};
-  let grandTotalCount = 0; // The overall total count is still useful for context/debugging, but not for proportional calc here
+  let grandTotalCount = 0;
     originalData.forEach(row => {
-        const key = selectedColumns.map(col => row[col] ?? '').join('|');
+        const key = columnsForAggregation.map(col => row[col] ?? '').join('|');
         if (!groupedData[key]) {
             groupedData[key] = { ...row };
             groupedData[key][shapeCountCol] = 0;
-        } else {
-        // Keep formula_ext as the first row's value (or merge if needed)
-    }
+        }
         groupedData[key][shapeCountCol] += row[shapeCountCol];
-        grandTotalCount += row[shapeCountCol]; // Accumulate total count
+        grandTotalCount += row[shapeCountCol];
     });
 
     let displayData = Object.values(groupedData);
+
+	// Apply filters
+	if (Object.keys(filtersByColumn).length > 0) {
+	  displayData = displayData.filter(row => {
+		for (const col in filtersByColumn) {
+		  const selectedValues = filtersByColumn[col];
+		  if (selectedValues.length > 0) {
+			const rowValue = String(row[col] ?? '');
+			if (!selectedValues.includes(rowValue)) {
+			  return false;
+			}
+		  }
+		}
+		return true;
+	  });
+	}
 
   // Apply multi-level sort
   if (sortPriority.length > 0) {
@@ -363,61 +844,50 @@ function updateTable() {
 
       // --- Custom sorting rules ---
       if (col === 'closed_strings' || col === 'open_strings') {
-        // Convert to binary sort key (X = 1, others = 0)
         const keyA = valA.split(',').map(v => (v.trim() === 'X' ? '1' : '0')).join('');
         const keyB = valB.split(',').map(v => (v.trim() === 'X' ? '1' : '0')).join('');
         if (keyA < keyB) return s.dir === 'asc' ? -1 : 1;
         if (keyA > keyB) return s.dir === 'asc' ? 1 : -1;
       } 
-		// --- Custom Fret Numbers Sort ---
 		else if (col === 'closed_fret_numbers' || col === 'open_fret_numbers') {
-		        
-		        // Helper function to find the primary sort key
-		        const getSortKeyAndList = (val) => {
-		            // 1. Replace all dashes with a unique non-fret value (-1) for internal consistency
-		            const cleanVal = String(val).replace(/-/g, '-1');
-		            const list = cleanVal.split(',').map(v => Number(v.trim()));
-		            
-		            let firstFretIndex = list.length; // Use list.length (a high index) for lists of only dashes/empty
-		            let firstFretValue = -Infinity; // Use -Infinity as the lowest possible value
-		            
-		            // Find the index and value of the first non-dash number (which means value >= 0)
-		            for (let i = 0; i < list.length; i++) {
-		                const num = list[i];
-		                if (num > 0) {
-		                    firstFretIndex = i;
-		                    firstFretValue = num;
-		                    break;
-		                }
-		            }
-		            
-		            // Composite Key: Position * 1000 + Value. (1000 is safely larger than max expected fret number)
-		            // This ensures index (position) is the primary sort factor.
-		            const compositeKey = firstFretIndex * 1000 + firstFretValue;
+		        
+		        const getSortKeyAndList = (val) => {
+		            const cleanVal = String(val).replace(/-/g, '-1');
+		            const list = cleanVal.split(',').map(v => Number(v.trim()));
+		            
+		            let firstFretIndex = list.length;
+		            let firstFretValue = -Infinity;
+		            
+		            for (let i = 0; i < list.length; i++) {
+		                const num = list[i];
+		                if (num > 0) {
+		                    firstFretIndex = i;
+		                    firstFretValue = num;
+		                    break;
+		                }
+		            }
+		            
+		            const compositeKey = firstFretIndex * 1000 + firstFretValue;
 
-		            return { compositeKey, list };
-		        };
+		            return { compositeKey, list };
+		        };
 
-		        const { compositeKey: keyA, list: listA } = getSortKeyAndList(valA);
-		        const { compositeKey: keyB, list: listB } = getSortKeyAndList(valB);
+		        const { compositeKey: keyA, list: listA } = getSortKeyAndList(valA);
+		        const { compositeKey: keyB, list: listB } = getSortKeyAndList(valB);
 
-		        // 1. Compare the Composite Key (Primary: Position, Secondary: Value)
-		        if (keyA < keyB) return s.dir === 'asc' ? -1 : 1;
-		        if (keyA > keyB) return s.dir === 'asc' ? 1 : -1;
+		        if (keyA < keyB) return s.dir === 'asc' ? -1 : 1;
+		        if (keyA > keyB) return s.dir === 'asc' ? 1 : -1;
 
-		        // 2. Tertiary Sort: If keys are equal, compare position-by-position
-		        const len = Math.max(listA.length, listB.length);
-		        
-		        for (let i = 0; i < len; i++) {
-		            // Use -Infinity for list elements that don't exist (e.g., list [1] vs [1,2])
-		            // This ensures shorter lists sort before longer lists when all elements match.
-		            const aNum = listA[i] ?? -Infinity;
-		            const bNum = listB[i] ?? -Infinity;
-		            
-		            if (aNum < bNum) return s.dir === 'asc' ? -1 : 1;
-		            if (aNum > bNum) return s.dir === 'asc' ? 1 : -1;
-		        }
-		        continue; // All values are equal, check next priority column
+		        const len = Math.max(listA.length, listB.length);
+		        
+		        for (let i = 0; i < len; i++) {
+		            const aNum = listA[i] ?? -Infinity;
+		            const bNum = listB[i] ?? -Infinity;
+		            
+		            if (aNum < bNum) return s.dir === 'asc' ? -1 : 1;
+		            if (aNum > bNum) return s.dir === 'asc' ? 1 : -1;
+		        }
+		        continue;
 		}
 
 	else if (col === 'closed_formula_ext' || col === 'open_formula_ext') {
@@ -427,21 +897,26 @@ function updateTable() {
 	  const listA = cleanValA.split(',').map(v => Number(v.trim()));
 	  const listB = cleanValB.split(',').map(v => Number(v.trim()));
 	  
+	  if (listA.length !== listB.length) {
+			const lenA = listA.length;
+			const lenB = listB.length;
+			if (lenA < lenB) return s.dir === 'asc' ? -1 : 1;
+			if (lenA > lenB) return s.dir === 'asc' ? 1 : -1;
+	  }
+	  
 	  const len = Math.max(listA.length, listB.length);
 	  
 	  for (let i = 0; i < len; i++) {
-		// Treat missing numbers as -Infinity for consistent comparison
 		const aNum = listA[i] ?? -Infinity;
 		const bNum = listB[i] ?? -Infinity;
 		
 		if (aNum < bNum) return s.dir === 'asc' ? -1 : 1;
 		if (aNum > bNum) return s.dir === 'asc' ? 1 : -1;
 	  }
-	  continue; // if all equal, check next priority column
+	  continue;
 	} 
 
       else {
-        // Default string comparison
         if (valA < valB) return s.dir === 'asc' ? -1 : 1;
         if (valA > valB) return s.dir === 'asc' ? 1 : -1;
       }
@@ -449,6 +924,47 @@ function updateTable() {
     return 0;
   });
 }
+
+	// Hide insignificant rows if enabled
+	if (hideInsignificant) {
+	  if (proportionalCountEnabled && groupByColumns.length > 0) {
+		// Build group totals
+		const groupTotals = new Map();
+		displayData.forEach(row => {
+		  const groupKey = groupByColumns.map(col => row[col] ?? '').join('|');
+		  if (!groupTotals.has(groupKey)) {
+			groupTotals.set(groupKey, 0);
+		  }
+		  groupTotals.set(groupKey, groupTotals.get(groupKey) + row[shapeCountCol]);
+		});
+		
+		// Filter out rows < 1%
+		displayData = displayData.filter(row => {
+		  const groupKey = groupByColumns.map(col => row[col] ?? '').join('|');
+		  const total = groupTotals.get(groupKey) || 0;
+		  if (total === 0) return false;
+		  const percentage = (row[shapeCountCol] / total) * 100;
+		  return percentage >= 1.0;
+		});
+	  } else {
+		// Use grand total
+		const total = displayData.reduce((sum, row) => sum + row[shapeCountCol], 0);
+		if (total > 0) {
+		  displayData = displayData.filter(row => {
+			const percentage = (row[shapeCountCol] / total) * 100;
+			return percentage >= 1.0;
+		  });
+		}
+	  }
+	}
+
+	for (const col in filtersByColumn) {
+	    if (!selectedColumns.includes(col)) {
+	        delete filtersByColumn[col];
+	    }
+	}
+
+	renderFilterDropdowns(displayData, selectedColumns);
 
     renderTable(displayData, selectedColumns);
 	  renderRowNumbers(displayData.length);
@@ -458,143 +974,124 @@ function updateTable() {
 // Render row numbers
 function renderRowNumbers(rowCount) {
   rowNumbersDiv.innerHTML = '';
-  for (let i = 1; i <= rowCount; i++) {
+  
+  // Calculate how many separator rows we need to add
+  let totalRows = rowCount;
+  if (proportionalCountEnabled && groupByColumns.length > 0) {
+    // Count unique groups
+    // This is approximate - the actual count happens in renderTable
+    totalRows = rowCount * 1.2; // Add some buffer for separators
+  }
+  
+  for (let i = 1; i <= totalRows; i++) {
     const div = document.createElement('div');
-    div.style.height = '22px';
-    div.textContent = i;
+    div.textContent = i <= rowCount ? i : '';
     rowNumbersDiv.appendChild(div);
   }
 }
 
-// Synchronize scrolling
-tableWrapperDiv.addEventListener('scroll', () => {
-  rowNumbersDiv.scrollTop = tableWrapperDiv.scrollTop;
-});
-
 // Render table
 function renderTable(data, displayColumns) {
-  csvTable.innerHTML = '';
-  if (data.length === 0) return;
+	const visibleColumns = displayColumns.filter(col => !hiddenColumns.includes(col));  
+	const isCountHidden = hiddenColumns.includes(shapeCountCol); 
+	
+  csvTable.innerHTML = '';
+  if (data.length === 0) return;
 
-  const thead = document.createElement('thead');
-  const headerRow = document.createElement('tr');
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
 
   const countHeader = proportionalCountEnabled ? `${shapeCountCol} (%)` : shapeCountCol;
 
-  displayColumns.forEach(col => {
-    const th = document.createElement('th');
-    th.textContent = col;
-    th.classList.add('sortable');
-    th.addEventListener('click', (e) => { if (e.detail===1) toggleSort(col); });
-    th.addEventListener('dblclick', () => removeSort(col));
-    const sp = sortPriority.findIndex(s => s.col===col);
-    if (sp >=0){ const indicator=document.createElement('span'); indicator.classList.add('sort-indicator'); indicator.textContent = sp+1; th.appendChild(indicator);}
-    headerRow.appendChild(th);
-  });
+  visibleColumns.forEach(col => {
+    const th = document.createElement('th');
+    th.textContent = col;
+    th.classList.add('sortable');
+    th.addEventListener('click', (e) => { if (e.detail===1) toggleSort(col); });
+    th.addEventListener('dblclick', () => removeSort(col));
+    const sp = sortPriority.findIndex(s => s.col===col);
+    if (sp >=0){ const indicator=document.createElement('span'); indicator.classList.add('sort-indicator'); indicator.textContent = sp+1; th.appendChild(indicator);}
+    headerRow.appendChild(th);
+  });
+  
+  // **Wrap the count column creation with a check for hiding:**
+if (!isCountHidden) { 
+	  const thCount = document.createElement('th');
+	  thCount.textContent = countHeader;
+	  thCount.classList.add('sortable');
+	  thCount.addEventListener('click', (e) => { if (e.detail===1) toggleSort(shapeCountCol); });
+	  thCount.addEventListener('dblclick', () => removeSort(shapeCountCol));
+	  const spCount = sortPriority.findIndex(s => s.col===shapeCountCol);
+	  if(spCount>=0){ const indicator=document.createElement('span'); indicator.classList.add('sort-indicator'); indicator.textContent=spCount+1; thCount.appendChild(indicator);}
+	  headerRow.appendChild(thCount);
+	}
 
-  // shape_count at end
-  const thCount = document.createElement('th');
-  thCount.textContent = countHeader;
-  thCount.classList.add('sortable');
-  thCount.addEventListener('click', (e) => { if (e.detail===1) toggleSort(shapeCountCol); });
-  thCount.addEventListener('dblclick', () => removeSort(shapeCountCol));
-  const spCount = sortPriority.findIndex(s => s.col===shapeCountCol);
-  if(spCount>=0){ const indicator=document.createElement('span'); indicator.classList.add('sort-indicator'); indicator.textContent=spCount+1; thCount.appendChild(indicator);}
-  headerRow.appendChild(thCount);
+  thead.appendChild(headerRow);
+  csvTable.appendChild(thead);
 
-  thead.appendChild(headerRow);
-  csvTable.appendChild(thead);
-
-// Table body
 const tbody = document.createElement('tbody');
+
+// Calculate grand total from CURRENT displayData (after filtering)
 const grandTotal = data.map(r => r[shapeCountCol]).reduce((acc, val) => acc + val, 0);
 
 // --- Determine color grouping logic ---
 let colorKeyFn;
 let columnsForColoring = [];
 
-if (sortPriority.length > 0) {
-  // 1. Prioritize manually selected color columns
-  columnsForColoring = sortPriority.map(s => s.col);
+if (colorByColumns.length > 0) {
+  columnsForColoring = colorByColumns.filter(c => c !== shapeCountCol);
+  colorKeyFn = row => columnsForColoring.map(c => row[c] ?? "").join("|");
 } else {
-  // 3. Final fallback to all displayed columns
   columnsForColoring = displayColumns;
+  colorKeyFn = row => columnsForColoring.map(c => row[c] ?? "").join("|");
 }
 
-const finalColorCols = columnsForColoring.filter(c => c !== shapeCountCol);
-colorKeyFn = row => finalColorCols.map(c => row[c] ?? "").join("|");
-
-// Get unique group keys
 const uniqueKeys = [...new Set(data.map(colorKeyFn))];
 const colorMap = new Map();
 uniqueKeys.forEach((key, i) => {
   colorMap.set(key, rainbowColors[i % rainbowColors.length]);
 });
 
-let previousRow = null; // To track the previous row's data
+let previousRow = null;
 
 	// --- Proportional Calculation Setup --- 
-	let currentGroupTotal = 0;
-	let currentGroupIndex = 0;
-	const groupTotalMap = new Map(); // Store pre-calculated group totals
+	const groupTotalMap = new Map();
 
-	if (proportionalCountEnabled && sortPriority.length > 0) {
-		// 1. Determine the "group-defining" columns (all but the lowest sort priority)
-		const groupDefiningCols = sortPriority.slice(0, -1).map(s => s.col);
-
-		if (groupDefiningCols.length > 0) {
-			let tempGroupKey = '';
-			let tempGroupTotal = 0;
-
-			for (let i = 0; i < data.length; i++) {
-				const row = data[i];
-
-				// Create a key based on all columns *except* the lowest sort priority
-				const newGroupKey = groupDefiningCols.map(col => row[col] ?? '').join('|');
-
-				// If the group key changes OR it's the first row
-				if (newGroupKey !== tempGroupKey || i === 0) {
-					if (i > 0) {
-						// Store the total for the *previous* group
-						groupTotalMap.set(tempGroupKey, tempGroupTotal);
-					}
-
-					// Start a new group
-					tempGroupKey = newGroupKey;
-					tempGroupTotal = 0;
-				}
-
-				// Add to the current group's total
-				tempGroupTotal += row[shapeCountCol];
-
-				// Special handling for the last group
-				if (i === data.length - 1) {
-					groupTotalMap.set(tempGroupKey, tempGroupTotal);
-				}
+	if (proportionalCountEnabled && groupByColumns.length > 0) {
+		// Use ONLY the selected group columns (not all visible columns)
+		const visibleGroupCols = groupByColumns.filter(col => visibleColumns.includes(col) || displayColumns.includes(col));
+		
+		data.forEach(row => {
+			const groupKey = visibleGroupCols.map(col => row[col] ?? '').join('|');
+			if (!groupTotalMap.has(groupKey)) {
+				groupTotalMap.set(groupKey, 0);
 			}
-		}
+			groupTotalMap.set(groupKey, groupTotalMap.get(groupKey) + row[shapeCountCol]);
+		});
 	}
 
-// Apply colors and new display logic row-by-row
+let currentGroupKey = '';
+let currentGroupTotal = 0;
+
 data.forEach((row, rowIndex) => {
-      const tr = document.createElement('tr');  
+      const tr = document.createElement('tr');  
 	  tr._rowData = row;
 	  
 	  const rowColor = colorMap.get(colorKeyFn(row));
-	  tr._rowColor = rowColor;  // <--- store for later
-	  tr.style.backgroundColor = rowColor + "20"; // add transparency (≈12%)
-		  
-  		let isChainBroken = false; // Flag to check if the sequence of identical values is broken
+	  tr._rowColor = rowColor;
+	  tr.style.backgroundColor = rowColor + "20";
+		  
+  		let isChainBroken = false;
 		
-	displayColumns.forEach((col, colIndex) => {
+	visibleColumns.forEach((col, colIndex) => {
 	  const td = document.createElement('td');
 	  let showValue = true;
 
 	  if (previousRow) {
 		if (row[col] === previousRow[col]) {
 		  showValue = false;
-		  td.style.backgroundColor = '#ffffff'; 
-		}
+ 		    td.style.backgroundColor = '#FFFFFF';
+			td.style.setProperty('border', 'none', 'important');		  		}
 	  }
 
 	  td.textContent = showValue ? (row[col] ?? '') : '';
@@ -602,27 +1099,28 @@ data.forEach((row, rowIndex) => {
 	  tr.appendChild(td);
 	});
 
+if (!isCountHidden) {
     const tdCount = document.createElement('td');
     let countValue = row[shapeCountCol] ?? 0;
 
 	if (proportionalCountEnabled) {
 		let total = 0;
 
-		// Determine which columns define the group (all but last sort-priority column)
-		const groupDefiningCols = sortPriority.slice(0, -1).map(s => s.col);
-
-		if (groupDefiningCols.length > 0) {
-			// N >= 2: Use sub-group total
-			// Retrieve pre-calculated group total
-			const groupKey = groupDefiningCols.map(col => row[col] ?? '').join('|');
+		if (groupByColumns.length > 0) {
+			const visibleGroupCols = groupByColumns.filter(col => visibleColumns.includes(col) || displayColumns.includes(col));
+			const groupKey = visibleGroupCols.map(col => row[col] ?? '').join('|');
 			total = groupTotalMap.get(groupKey) || 0;
+			
+			// Track group changes for separator rows
+			if (groupKey !== currentGroupKey) {
+				currentGroupKey = groupKey;
+				currentGroupTotal = total;
+			}
 		} else {
-			// N = 0 or N = 1: Use the grand total
 			total = grandTotal;
 		}
 
 		if (total > 0) {
-			// Calculate and display percentage, rounded to one decimal place
 			const percentage = (countValue / total) * 100;
 			tdCount.textContent = percentage.toFixed(1);
 		} else {
@@ -632,20 +1130,75 @@ data.forEach((row, rowIndex) => {
 		tdCount.textContent = countValue;
 	}
 	
-	// --- GRAYSCALE COLORING BASED ON VALUE ---
 	let maxCount = Math.max(...data.map(r => r[shapeCountCol]));
-	let normalized = countValue / maxCount; // 0-1
-	let alpha = Math.min(Math.max(normalized, 0), 1); // clamp 0-1
+	let normalized = countValue / maxCount;
+	let alpha = Math.min(Math.max(normalized, 0), 1);
 	let grayscale = Math.round(255 * (1 - normalized));
 	
 	tdCount.style.backgroundColor = `rgb(${grayscale},${grayscale},${grayscale})`;
 	tdCount.style.color = normalized > 0.5 ? 'white' : 'black';
 	
 	tr.appendChild(tdCount);
+}
 
 	tbody.appendChild(tr);
-	previousRow = row; // Update previousRow for the next iteration
+	
+	// Add separator row with total if we're at the end of a group
+	if (proportionalCountEnabled && groupByColumns.length > 0 && rowIndex < data.length - 1) {
+		const visibleGroupCols = groupByColumns.filter(col => visibleColumns.includes(col) || displayColumns.includes(col));
+		const nextGroupKey = visibleGroupCols.map(col => data[rowIndex + 1][col] ?? '').join('|');
+		
+		if (nextGroupKey !== currentGroupKey) {
+			// Create separator row
+			const separatorTr = document.createElement('tr');
+			separatorTr.style.backgroundColor = 'transparent';
+			separatorTr.style.textDecoration = "underline";
+			
+			visibleColumns.forEach(() => {
+				const td = document.createElement('td');
+				td.style.border = 'none';
+				td.style.backgroundColor = 'transparent';
+				separatorTr.appendChild(td);
+			});
+			
+			if (!isCountHidden) {
+			const totalTd = document.createElement('td');
+			totalTd.style.backgroundColor = 'transparent';
+			totalTd.style.border = 'none';
+			totalTd.textContent = proportionalCountEnabled ? '100.0' : currentGroupTotal;
+			separatorTr.appendChild(totalTd);
+			}
+			
+			tbody.appendChild(separatorTr);
+		}
+	}
+	
+	previousRow = row;
 });
+
+// Add final separator row if proportional grouping is enabled
+if (proportionalCountEnabled && groupByColumns.length > 0 && data.length > 0) {
+	const separatorTr = document.createElement('tr');
+	separatorTr.style.backgroundColor = 'transparent';
+	separatorTr.style.textDecoration = "underline";
+	
+	visibleColumns.forEach(() => {
+		const td = document.createElement('td');
+		td.style.border = 'none';
+		td.style.backgroundColor = 'transparent';
+		separatorTr.appendChild(td);
+	});
+	
+	if (!isCountHidden) {
+	const totalTd = document.createElement('td');
+	totalTd.style.backgroundColor = 'transparent';
+	totalTd.style.border = 'none';
+	totalTd.textContent = proportionalCountEnabled ? '100.0' : currentGroupTotal;
+	separatorTr.appendChild(totalTd);
+	}
+	
+	tbody.appendChild(separatorTr);
+}
 
 csvTable.appendChild(tbody);
 
@@ -659,12 +1212,12 @@ function toggleSort(col){
   if (checkbox) {
     checkbox.checked = true;
     if (!selectedOrder.includes(col)) {
-      selectedOrder.push(col); // Add to display order if not present
+      selectedOrder.push(col);
     }
   }
 
   if (!existing) {  
-    sortPriority.push({col, dir:'asc'}); // add new column to end = lowest priority
+    sortPriority.push({col, dir:'asc'});
   } else {
     existing.dir = existing.dir === 'asc' ? 'desc' : 'asc';
   }
@@ -678,7 +1231,6 @@ function removeSort(col){
 }
 
 function renderSortInstructions(){
-  // Initialize instructions string
   let instructions = '';
   
   if (sortPriority.length > 0) {
@@ -686,31 +1238,8 @@ function renderSortInstructions(){
       sortPriority.map((s,i)=>`${i+1}: ${s.col} (${s.dir.toUpperCase()})`).join(' | ');
   }
 
-  // --- Determine which columns are CURRENTLY being used for coloring ---
-  let coloringCols = [];
-  
-  // Get currently selected columns to determine visible columns for fallback
-  const selectedColumns = selectedOrder.filter(col => {
-    const cb = checkboxesDiv.querySelector(`input[value="${col}"]`);
-    return cb && cb.checked;
-  });
-
-  let colorSource = '';
-  if (sortPriority.length > 0) {
-      const primaryCol = sortPriority[0].col;
-      coloringCols = [primaryCol];
-      colorSource = `Primary Sort: ${primaryCol}`;
-  } else {
-      coloringCols = selectedColumns.filter(c => c !== shapeCountCol);
-      colorSource = 'All Visible Columns (No Sort Active)';
-  }
-
-  if (coloringCols.length > 0) {
-    const colorSource = sortPriority.length > 0 ? 'Sort Priority' : 
-                        'All Visible Cols';
-    
-    let colorDisplay = `Color Grouping (Source: ${colorSource}): ${coloringCols.join(', ')}`;
-    
+  if (colorByColumns.length > 0) {
+    let colorDisplay = `Color Grouping: ${colorByColumns.join(', ')}`;
     if (instructions) {
       instructions += '<br/>' + colorDisplay;
     } else {
@@ -718,7 +1247,15 @@ function renderSortInstructions(){
     }
   }
 
-  // Update the instruction div
+  if (groupByColumns.length > 0 && proportionalCountEnabled) {
+    let groupDisplay = `Proportions Grouped By: ${groupByColumns.join(', ')}`;
+    if (instructions) {
+      instructions += '<br/>' + groupDisplay;
+    } else {
+      instructions = groupDisplay;
+    }
+  }
+
   sortInstructionsDiv.innerHTML = instructions;
 }
 
