@@ -5,6 +5,8 @@
 <title>Shapes Table</title>
 <link href="https://fonts.googleapis.com/css2?family=Ubuntu+Mono&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 html, body {
   height: 100%;
@@ -114,7 +116,7 @@ body {
   flex: 1;
   overflow-y: auto; 
   overflow-x: auto; 
-
+  scroll-behavior: smooth;
 }
 
 table {
@@ -135,35 +137,13 @@ th, td {
 thead th {
   position: sticky;
   top: 0;
-  background: #eee;
-  z-index: 2;
+  background: #f0f0f0;  
+  z-index: 10;
+  box-shadow: 0 2px 3px rgba(0,0,0,0.15); 
 }
 
 th.sortable { cursor: pointer; text-decoration: underline; }
 .sort-indicator { font-size: 8px; color: gray; margin-left: 2px; }
-
-.fullscreen-mode {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: white;
-  z-index: 1000;
-  padding: 10px;
-  /* Hide unnecessary elements */
-  display: flex; 
-  flex-direction: column;
-}
-
-.fullscreen-mode > *:not(.table-container) {
-  display: none !important;
-}
-
-.fullscreen-mode .table-container {
-  flex-grow: 1;
-  margin-top: 0 !important;
-}
 
 </style>
 </head>
@@ -176,18 +156,22 @@ th.sortable { cursor: pointer; text-decoration: underline; }
         Choose File
         <input type="file" id="csvFile" accept=".csv" />
     </label>
-		<span id="fileNameDisplay" style="margin-left: 5px; font-style: italic;">(Using default file)</span> <button id="autoArrangeBtn">Auto-Arrange Table</button>
-    <label style="margin-left: 20px;">
-        <input type="checkbox" id="proportionalCountToggle"> Proportional Count (%)
-    </label>
-	<button id="fullscreenBtn" style="margin-left: 20px;">Fullscreen Table</button> </div>
-	<button id="exportCsvBtn">Export CSV</button> </div>
+	<span id="fileNameDisplay" style="margin-left: 5px; font-style: italic;">(Using default file)</span> 
+	<button id="exportCsvBtn">Export CSV</button>
+	<button id="exportPdfBtn">Export PDF</button>
 </div>
 
 <div style="margin: 10px 0;">
   <label>
+    <input type="checkbox" id="proportionalCountToggle"> Proportional Count (%)
+	  </label>
+  <label>
     <input type="checkbox" id="hideInsignificantToggle"> Hide Insignificant Rows (< 1%)
   </label>
+  <label style="margin-left: 20px;">
+    <input type="checkbox" id="collapseOpenStringsToggle"> Collapse Open Strings
+  </label>
+  <button id="autoArrangeBtn">Auto-Arrange Table</button>
 </div>
 
 <div class="checkbox-section" id="display-checkboxes-container">
@@ -249,6 +233,7 @@ let originalHeaderOrder = [];
 let autoArrangedHeaderOrder = [];
 let filtersByColumn = {}; 
 let hideInsignificant = false;
+let collapseOpenStrings = false;
 
 const shapeCountCol = 'count';
 const rainbowColors = [
@@ -265,8 +250,9 @@ const tableWrapperDiv = document.querySelector('.table-wrapper');
 const defaultCsvUrl = 'https://raw.githubusercontent.com/stonedninjagoat/shapes/refs/heads/main/shapesEvery.csv';
 const proportionalCountToggle = document.getElementById('proportionalCountToggle');
 const hideInsignificantToggle = document.getElementById('hideInsignificantToggle');
-const fullscreenBtn = document.getElementById('fullscreenBtn');
+const collapseOpenStringsToggle = document.getElementById('collapseOpenStringsToggle');
 const exportCsvBtn = document.getElementById('exportCsvBtn'); // **Add this line**
+const exportPdfBtn = document.getElementById('exportPdfBtn');
 
 proportionalCountToggle.addEventListener('change', (e) => {
     proportionalCountEnabled = e.target.checked;
@@ -278,10 +264,9 @@ hideInsignificantToggle.addEventListener('change', (e) => {
     updateTable();
 });
 
-fullscreenBtn.addEventListener('click', () => {
-    const body = document.body;
-    body.classList.toggle('fullscreen-mode');
-    fullscreenBtn.textContent = body.classList.contains('fullscreen-mode') ? 'Exit Fullscreen' : 'Fullscreen Table';
+collapseOpenStringsToggle.addEventListener('change', (e) => {
+    collapseOpenStrings = e.target.checked;
+    updateTable();
 });
 
 exportCsvBtn.addEventListener('click', () => {
@@ -341,6 +326,36 @@ function exportTableDataToCsv() {
       document.body.removeChild(link);
   }
 }
+
+// --- EXPORT PDF FUNCTION (No Fixed Page, Full Table) ---
+exportPdfBtn.addEventListener('click', async () => {
+  const { jsPDF } = window.jspdf;
+  const tableWrapper = document.querySelector('.table-wrapper');
+  const table = document.getElementById('csvTable');
+  
+  if (!table) return;
+
+  // Ensure full content visible
+  tableWrapper.scrollLeft = 0;
+  tableWrapper.scrollTop = 0;
+
+  // Capture at full resolution
+  const canvas = await html2canvas(table, {
+    scale: 2, // higher quality
+    useCORS: true,
+    backgroundColor: '#ffffff'
+  });
+
+  const imgData = canvas.toDataURL('image/png');
+  const pdf = new jsPDF({
+    orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+    unit: 'px',
+    format: [canvas.width, canvas.height] // 🔥 Make page same size as the table
+  });
+
+  pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+  pdf.save('shapes_table_full.pdf');
+});
 
 function loadCsvFromUrl(url) {
   Papa.parse(url, {
@@ -453,26 +468,29 @@ function renderCheckboxes() {
 	
   });
 
-  checkboxesDiv.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+checkboxesDiv.querySelectorAll('input[type="checkbox"]').forEach(cb => {
   cb.addEventListener('change', (e) => {
     const col = e.target.value;
 
     if (e.target.checked) {
       selectedOrder.push(col);
     } else {
-
-      selectedOrder = selectedOrder.filter(c => c !== col);
-      sortPriority = sortPriority.filter(s => s.col !== col);
-      
-      colorByColumns = colorByColumns.filter(c => c !== col);
-      groupByColumns = groupByColumns.filter(c => c !== col);
-      delete filtersByColumn[col];
-
-
+      selectedOrder = selectedOrder.filter(c => c !== col);
+      sortPriority = sortPriority.filter(s => s.col !== col);
+      
+      colorByColumns = colorByColumns.filter(c => c !== col);
+      groupByColumns = groupByColumns.filter(c => c !== col);
+      hiddenColumns = hiddenColumns.filter(c => c !== col);
+      delete filtersByColumn[col];
     }
 
-	updateSelectAllButtonText(); 
+    updateSelectAllButtonText();
     updateTable();
+    
+    // After updateTable renders the special checkboxes, sync them
+    setTimeout(() => {
+      syncSpecialCheckboxesToDisplay();
+    }, 0);
   });
 });
 updateSelectAllButtonText();
@@ -484,6 +502,86 @@ function updateSelectAllButtonText() {
   document.getElementById('toggleSelectAll').textContent = allChecked ? 'Deselect All' : 'Select All';
 }
 
+function syncSpecialCheckboxesToDisplay() {
+  // Get currently selected display columns
+  const selectedDisplayCols = selectedOrder.filter(col =>
+    checkboxesDiv.querySelector(`input[value="${col}"]`).checked
+  );
+  
+  // Sync Color checkboxes - check only the selected display columns
+  const colorCheckboxes = document.querySelectorAll('#color-checkboxes input[type="checkbox"]');
+  colorCheckboxes.forEach(cb => {
+    if (selectedDisplayCols.includes(cb.value)) {
+      cb.checked = true;
+      if (!colorByColumns.includes(cb.value)) {
+        colorByColumns.push(cb.value);
+      }
+    } else {
+      cb.checked = false;
+      colorByColumns = colorByColumns.filter(c => c !== cb.value);
+    }
+  });
+  updateToggleButtonText('color');
+  
+  // Sync Group checkboxes - check only the selected display columns
+  /*const groupCheckboxes = document.querySelectorAll('#group-checkboxes input[type="checkbox"]');
+  groupCheckboxes.forEach(cb => {
+    if (selectedDisplayCols.includes(cb.value)) {
+      cb.checked = true;
+      if (!groupByColumns.includes(cb.value)) {
+        groupByColumns.push(cb.value);
+      }
+    } else {
+      cb.checked = false;
+      groupByColumns = groupByColumns.filter(c => c !== cb.value);
+    }
+  });
+  updateToggleButtonText('group');*/
+  
+  // Sync Hide checkboxes - uncheck hidden columns
+  const hideCheckboxes = document.querySelectorAll('#hide-checkboxes input[type="checkbox"]');
+  hideCheckboxes.forEach(cb => {
+    if (hiddenColumns.includes(cb.value)) {
+      cb.checked = true;
+    } else {
+      cb.checked = false;
+    }
+  });
+  updateToggleButtonText('hide');
+  
+  // Sync Sort checkboxes
+  const sortCheckboxes = document.querySelectorAll('#sort-checkboxes input[type="checkbox"]');
+  sortCheckboxes.forEach(cb => {
+    if (sortPriority.find(s => s.col === cb.value)) {
+      cb.checked = true;
+    } else {
+      cb.checked = false;
+    }
+  });
+  updateToggleButtonText('sort');
+}
+
+function updateToggleButtonText(type) {
+  const checkboxesId = `${type}-checkboxes`;
+  const checkboxesDiv = document.getElementById(checkboxesId);
+  const buttonId = `toggle${type.charAt(0).toUpperCase() + type.slice(1)}All`;
+  const toggleButton = document.getElementById(buttonId);
+  
+  if (!checkboxesDiv || !toggleButton) return;
+  
+  const checkboxes = checkboxesDiv.querySelectorAll('input[type="checkbox"]');
+  const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+  const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
+  
+  if (anyChecked && !allChecked) {
+    toggleButton.textContent = 'Deselect All';
+  } else if (allChecked) {
+    toggleButton.textContent = 'Deselect All';
+  } else {
+    toggleButton.textContent = 'Select All';
+  }
+}
+
 function autoSelectDisplayColumn(col) {
   const displayCheckbox = checkboxesDiv.querySelector(`input[value="${col}"]`);
   if (displayCheckbox && !displayCheckbox.checked) {
@@ -491,10 +589,9 @@ function autoSelectDisplayColumn(col) {
     if (!selectedOrder.includes(col)) {
       selectedOrder.push(col);
     }
-    updateSelectAllButtonText(); // Update the toggle text for display columns
+    updateSelectAllButtonText();
   }
 }
-
 
 // Render color, sort, and group selection checkboxes
 function renderSpecialCheckboxes(visibleCols) {
@@ -534,16 +631,18 @@ function renderCheckboxGroup(type, columns, selectedCols) {
     checkbox.value = col;
     checkbox.checked = selectedCols.includes(col);
     
-    checkbox.addEventListener('change', (e) => {
-      const col = e.target.value;
-      
-      if (type === 'color') {
-        if (e.target.checked) {
-          if (!colorByColumns.includes(col)) colorByColumns.push(col);
-		  autoSelectDisplayColumn(col);
-		} else {
-          colorByColumns = colorByColumns.filter(c => c !== col);
-        }
+checkbox.addEventListener('change', (e) => {
+  const col = e.target.value;
+  
+  if (type === 'color') {
+    if (e.target.checked) {
+      if (!colorByColumns.includes(col)) colorByColumns.push(col);
+      autoSelectDisplayColumn(col);
+    } else {
+      colorByColumns = colorByColumns.filter(c => c !== col);
+    }
+    // Update the Color toggle button text
+    updateToggleButtonText('color');	
       } else if (type === 'sort') {
         if (e.target.checked) {
           if (!sortPriority.find(s => s.col === col)) {
@@ -552,31 +651,24 @@ function renderCheckboxGroup(type, columns, selectedCols) {
         } else {
           sortPriority = sortPriority.filter(s => s.col !== col);
         }
+		// Update the Sort toggle button text
+		updateToggleButtonText('sort');
       } else if (type === 'group') {
         if (e.target.checked) {
           if (!groupByColumns.includes(col)) groupByColumns.push(col);
-		  autoSelectDisplayColumn(col);
         } else {
           groupByColumns = groupByColumns.filter(c => c !== col);
         }
+		// Update the Group toggle button text
+		updateToggleButtonText('group');
       } else if (type === 'hide') {
 		if (e.target.checked) {
 		  if (!hiddenColumns.includes(col)) hiddenColumns.push(col);
-		  
-		  if (col === shapeCountCol) {
-            groupByColumns = [];
-            // Uncheck all group checkboxes visually
-            document.querySelectorAll('#group-checkboxes input[type="checkbox"]').forEach(cb => {
-              cb.checked = false;
-            });
-            // Reset the toggle button text
-            document.getElementById('toggleGroupAll').textContent = 'Select All';
-          }
-
-		  
 		} else {
 		  hiddenColumns = hiddenColumns.filter(c => c !== col);
 	    }
+	    // Update the Hide toggle button text
+		updateToggleButtonText('hide');
 	  }
       
       updateTable();
@@ -614,12 +706,10 @@ toggleButton.addEventListener('click', () => {
     colorByColumns = [];
     groupByColumns = [];
 	hiddenColumns = [];
-    toggleButton.textContent = 'Select All';
-  } else {
+	updateSelectAllButtonText()  } else {
     checkboxes.forEach(cb => cb.checked = true);
     selectedOrder = Array.from(checkboxes).map(cb => cb.value);
-    toggleButton.textContent = 'Deselect All';
-  }
+	updateSelectAllButtonText()  }
 
   updateTable();
 });
@@ -638,7 +728,7 @@ toggleColorButton.addEventListener('click', () => {
     }
   });
   
-  toggleColorButton.textContent = allChecked ? 'Select All' : 'Deselect All';
+  updateToggleButtonText('color');
   updateTable();
 });
 
@@ -657,7 +747,7 @@ toggleSortButton.addEventListener('click', () => {
     sortPriority = [];
   }
   
-  toggleSortButton.textContent = allChecked ? 'Select All' : 'Deselect All';
+  updateToggleButtonText('sort');
   updateTable();
 });
 
@@ -675,7 +765,7 @@ toggleGroupButton.addEventListener('click', () => {
     }
   });
   
-  toggleGroupButton.textContent = allChecked ? 'Select All' : 'Deselect All';
+  updateToggleButtonText('group');
   updateTable();
 });
 
@@ -693,7 +783,7 @@ toggleHideButton.addEventListener('click', () => {
     }
   });
   
-  toggleHideButton.textContent = allChecked ? 'Select All' : 'Deselect All';
+  updateToggleButtonText('hide');
   updateTable();
 });
 
@@ -783,6 +873,16 @@ function renderFilterDropdowns(data, displayColumns) {
     filterDiv.appendChild(select);
     filterDropdownsDiv.appendChild(filterDiv);
   });
+  
+    updateFilterButtonText();
+}
+
+function updateFilterButtonText() {
+  const clearBtn = document.getElementById('clearAllFilters');
+  const hasFilters = Object.keys(filtersByColumn).length > 0 && 
+                     Object.values(filtersByColumn).some(arr => arr.length > 0);
+  
+  clearBtn.textContent = hasFilters ? 'Clear Filters' : 'Clear All';
 }
 
 // Update table with aggregation and sorting
@@ -817,6 +917,122 @@ function updateTable() {
     });
 
     let displayData = Object.values(groupedData);
+
+// Collapse open strings if enabled
+if (collapseOpenStrings && (originalData.some(row => 'open_fret_numbers' in row) || originalData.some(row => 'open_strings' in row))) {
+  const groupedForCollapse = {};
+  
+  displayData.forEach(row => {
+    // Create a key that includes the NON-ZERO/NON-DASH parts of open_fret_numbers and NON-O/NON-DASH parts of open_strings
+    let collapsedFretKey = '';
+    let collapsedStringsKey = '';
+    
+    if (row['open_fret_numbers']) {
+      const parts = String(row['open_fret_numbers']).split(',').map(p => p.trim());
+      // Keep actual numbers, replace 0 and - with placeholder
+      collapsedFretKey = parts.map(p => (p === '0' || p === '-') ? '_' : p).join(',');
+    }
+    
+    if (row['open_strings']) {
+      const parts = String(row['open_strings']).split(',').map(p => p.trim());
+      // Keep X, replace O and - with placeholder
+      collapsedStringsKey = parts.map(p => (p === 'O' || p === '-') ? '_' : p).join(',');
+    }
+    
+    // Create key with all columns, but use collapsed versions for the special columns
+    const keyParts = columnsForAggregation.map(col => {
+      if (col === 'open_fret_numbers') return collapsedFretKey;
+      if (col === 'open_strings') return collapsedStringsKey;
+      return row[col] ?? '';
+    });
+    
+    const key = keyParts.join('|');
+    
+    if (!groupedForCollapse[key]) {
+      groupedForCollapse[key] = {
+        rows: [],
+        baseRow: { ...row }
+      };
+    }
+    groupedForCollapse[key].rows.push(row);
+  });
+  
+  // Now collapse each group
+  const collapsedData = [];
+  
+  for (const key in groupedForCollapse) {
+    const group = groupedForCollapse[key];
+    const rows = group.rows;
+    
+    const collapsedRow = { ...group.baseRow };
+    
+    // Collapse open_fret_numbers: merge 0s and -s
+    if (rows[0]['open_fret_numbers'] !== undefined) {
+      const allParts = rows.map(row => {
+        const val = String(row['open_fret_numbers'] ?? '');
+        return val.split(',').map(p => p.trim());
+      });
+      
+      const maxLength = Math.max(...allParts.map(p => p.length));
+      const merged = [];
+      
+      for (let i = 0; i < maxLength; i++) {
+        // Collect all values at this position
+        const valuesAtPos = allParts.map(parts => parts[i]).filter(v => v);
+        
+        // If there's a real number (not 0 or -), use it
+        const realNumber = valuesAtPos.find(v => v !== '0' && v !== '-');
+        if (realNumber) {
+          merged.push(realNumber);
+        } else if (valuesAtPos.includes('0')) {
+          // If any has 0, use 0
+          merged.push('0');
+        } else {
+          // Otherwise use -
+          merged.push(allParts[0][i] || '-');
+        }
+      }
+      
+      collapsedRow['open_fret_numbers'] = merged.join(',');
+    }
+    
+    // Collapse open_strings: merge Os and -s
+    if (rows[0]['open_strings'] !== undefined) {
+      const allParts = rows.map(row => {
+        const val = String(row['open_strings'] ?? '');
+        return val.split(',').map(p => p.trim());
+      });
+      
+      const maxLength = Math.max(...allParts.map(p => p.length));
+      const merged = [];
+      
+      for (let i = 0; i < maxLength; i++) {
+        // Collect all values at this position
+        const valuesAtPos = allParts.map(parts => parts[i]).filter(v => v);
+        
+        // If there's an X, use it
+        const hasX = valuesAtPos.find(v => v === 'X');
+        if (hasX) {
+          merged.push('X');
+        } else if (valuesAtPos.includes('O')) {
+          // If any has O, use O
+          merged.push('O');
+        } else {
+          // Otherwise use -
+          merged.push(allParts[0][i] || '-');
+        }
+      }
+      
+      collapsedRow['open_strings'] = merged.join(',');
+    }
+    
+    collapsedRow[shapeCountCol] = rows.reduce((sum, r) => sum + r[shapeCountCol], 0);
+    
+    collapsedData.push(collapsedRow);
+  }
+  
+  displayData = collapsedData;
+}
 
 	// Apply filters
 	if (Object.keys(filtersByColumn).length > 0) {
@@ -1088,10 +1304,25 @@ data.forEach((row, rowIndex) => {
 	  let showValue = true;
 
 	  if (previousRow) {
+		// Check if current column matches previous row
 		if (row[col] === previousRow[col]) {
-		  showValue = false;
- 		    td.style.backgroundColor = '#FFFFFF';
-			td.style.setProperty('border', 'none', 'important');		  		}
+		  // Check if any column to the left has a different value
+		  let hasUniqueLeft = false;
+		  for (let i = 0; i < colIndex; i++) {
+			const leftCol = visibleColumns[i];
+			if (row[leftCol] !== previousRow[leftCol]) {
+			  hasUniqueLeft = true;
+			  break;
+			}
+		  }
+		  
+		  // Only hide if no unique value to the left
+		  if (!hasUniqueLeft) {
+			showValue = false;
+			td.style.backgroundColor = '#FFFFFF';
+			td.style.setProperty('border', 'none', 'important');
+		  }
+		}
 	  }
 
 	  td.textContent = showValue ? (row[col] ?? '') : '';
