@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Guitar Shapes Table :D</title>
+<title>Shapes Table</title>
 <link href="https://fonts.googleapis.com/css2?family=Ubuntu+Mono&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -66,7 +66,7 @@ body {
 }
 
 .closed-col-bg {
-  background-color: #e6ffff; /* Light Blue */
+  background-color: #e6f0ff; /* Light Blue */
   border-radius: 4px;
   padding: 2px 5px; 
 }
@@ -154,14 +154,14 @@ th.sortable { cursor: pointer; text-decoration: underline; }
 </head>
 <body>
 
-<h2>Guitar Shapes Table :D</h2>
+<h2>Shapes Table</h2>
 
 <div id="controls">
     <label class="file-btn">
         Choose File
         <input type="file" id="csvFile" accept=".csv" />
     </label>
-	<span id="fileNameDisplay" style="margin-left: 5px; font-style: italic;">(Using default file --- for Sam: Joe Robinson Preliminary Guitar Data)<br><br></span> 
+	<span id="fileNameDisplay" style="margin-left: 5px; font-style: italic;">(Using default file)<br><br></span> 
 	<button id="exportCsvBtn">Export CSV</button>
 	<button id="exportPdfBtn">Export PDF</button>
 </div>
@@ -472,6 +472,7 @@ function renderCheckboxes() {
     } else {
 		label.classList.add('default-col-bg');
 	}
+	
   });
 
 checkboxesDiv.querySelectorAll('input[type="checkbox"]').forEach(cb => {
@@ -688,9 +689,10 @@ checkbox.addEventListener('change', (e) => {
         label.classList.add('closed-col-bg');
     } else if (col.includes('open_')) {
         label.classList.add('open-col-bg');
-    } else { 
+    } else {
 		label.classList.add('default-col-bg');
 	}
+	
   });
 }
 
@@ -1500,14 +1502,4 @@ function renderSortInstructions(){
 </script>
 
 </body>
-
 </html>
-
-
-
-
-
-
-
-
-
