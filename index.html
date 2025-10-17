@@ -1128,12 +1128,12 @@ if (collapseOpenStrings && (originalData.some(row => 'open_fret_numbers' in row)
 		        continue;
 		}
 
-	else if (col === 'closed_formula_ext' || col === 'open_formula_ext') {
+	else if (col === 'closed_formula_ext' || col === 'open_formula_ext' || col === 'closed_extension' || col === 'open_extension' || col === 'open_bass' || col === 'closed_bass') {
 	  const cleanValA = String(valA).replace(/-/g, '');
 	  const cleanValB = String(valB).replace(/-/g, '');
 
-	  const listA = cleanValA.split(',').map(v => Number(v.trim()));
-	  const listB = cleanValB.split(',').map(v => Number(v.trim()));
+	  const listA = cleanValA.split(',').map(v => v.trim());
+      const listB = cleanValB.split(',').map(v => v.trim());
 	  
 	  if (listA.length !== listB.length) {
 			const lenA = listA.length;
@@ -1145,11 +1145,21 @@ if (collapseOpenStrings && (originalData.some(row => 'open_fret_numbers' in row)
 	  const len = Math.max(listA.length, listB.length);
 	  
 	  for (let i = 0; i < len; i++) {
-		const aNum = listA[i] ?? -Infinity;
-		const bNum = listB[i] ?? -Infinity;
-		
+		const aVal = listA[i] ?? '';
+		const bVal = listB[i] ?? '';
+
+		const aHasHash = aVal.endsWith('#');
+		const bHasHash = bVal.endsWith('#');
+		const aNum = Number(aVal.replace('#', ''));
+		const bNum = Number(bVal.replace('#', ''));
+
 		if (aNum < bNum) return s.dir === 'asc' ? -1 : 1;
 		if (aNum > bNum) return s.dir === 'asc' ? 1 : -1;
+
+		if (aNum === bNum) {
+		  if (!aHasHash && bHasHash) return s.dir === 'asc' ? -1 : 1;
+		  if (aHasHash && !bHasHash) return s.dir === 'asc' ? 1 : -1;
+		}
 	  }
 	  continue;
 	} 
@@ -1515,5 +1525,4 @@ function renderSortInstructions(){
 </script>
 
 </body>
-
 </html>
