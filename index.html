@@ -1126,7 +1126,30 @@ if (collapseOpenStrings && (originalData.some(row => 'open_fret_numbers' in row)
 		            if (aNum > bNum) return s.dir === 'asc' ? 1 : -1;
 		        }
 		        continue;
-		}
+		} else if (col === 'closed_fret_shapes') {
+        // Custom shape order: R > P... > M...
+			const shapeRank = (shape) => {
+			  const trimmed = String(shape).trim();
+			  if (trimmed.startsWith('R')) return 2000; // Highest
+			  if (trimmed.startsWith('P')) return 1000 - trimmed.length; // More Ps = smaller rank
+			  if (trimmed.startsWith('M')) return 500 - trimmed.length;  // More Ms = smaller rank
+			  return 0;
+			};
+
+			const listA = String(valA).split(',').map(v => v.trim());
+			const listB = String(valB).split(',').map(v => v.trim());
+
+			const len = Math.max(listA.length, listB.length);
+			for (let i = 0; i < len; i++) {
+			  const aVal = listA[i] ?? '';
+			  const bVal = listB[i] ?? '';
+			  const aRank = shapeRank(aVal);
+			  const bRank = shapeRank(bVal);
+			  if (aRank < bRank) return s.dir === 'asc' ? -1 : 1;
+			  if (aRank > bRank) return s.dir === 'asc' ? 1 : -1;
+			}
+			continue;
+		  }
 
 	else if (col === 'closed_formula_ext' || col === 'open_formula_ext' || col === 'closed_extension' || col === 'open_extension' || col === 'open_bass' || col === 'closed_bass') {
 	  const cleanValA = String(valA).replace(/-/g, '');
