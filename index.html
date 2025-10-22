@@ -1081,77 +1081,115 @@ if (collapseOpenStrings && (originalData.some(row => 'open_fret_numbers' in row)
       let valB = b[col] ?? '';
 
       // --- Custom sorting rules ---
-      if (col === 'closed_strings' || col === 'open_strings') {
-        const keyA = valA.split(',').map(v => (v.trim() === 'X' ? '1' : '0')).join('');
-        const keyB = valB.split(',').map(v => (v.trim() === 'X' ? '1' : '0')).join('');
-        if (keyA < keyB) return s.dir === 'asc' ? -1 : 1;
-        if (keyA > keyB) return s.dir === 'asc' ? 1 : -1;
-      } 
-		else if (col === 'closed_fret_numbers' || col === 'open_fret_numbers') {
-		        
-		        const getSortKeyAndList = (val) => {
-		            const cleanVal = String(val).replace(/-/g, '-1');
-		            const list = cleanVal.split(',').map(v => Number(v.trim()));
-		            
-		            let firstFretIndex = list.length;
-		            let firstFretValue = -Infinity;
-		            
-		            for (let i = 0; i < list.length; i++) {
-		                const num = list[i];
-		                if (num > 0) {
-		                    firstFretIndex = i;
-		                    firstFretValue = num;
-		                    break;
-		                }
-		            }
-		            
-		            const compositeKey = firstFretIndex * 1000 + firstFretValue;
+		if (col === 'closed_strings' || col === 'open_strings') {
+		  const toBits = v => v.split(',').map(x => x.trim() === 'X' ? 1 : 0);
 
-		            return { compositeKey, list };
-		        };
+		  const bitsA = toBits(valA);
+		  const bitsB = toBits(valB);
 
-		        const { compositeKey: keyA, list: listA } = getSortKeyAndList(valA);
-		        const { compositeKey: keyB, list: listB } = getSortKeyAndList(valB);
+		  const firstA = bitsA.indexOf(1);
+		  const firstB = bitsB.indexOf(1);
+		  if (firstA !== firstB) return s.dir === 'asc' ? firstA - firstB : firstB - firstA;
 
-		        if (keyA < keyB) return s.dir === 'asc' ? -1 : 1;
-		        if (keyA > keyB) return s.dir === 'asc' ? 1 : -1;
+		  const countA = bitsA.reduce((a, b) => a + b, 0);
+		  const countB = bitsB.reduce((a, b) => a + b, 0);
+		  if (countA !== countB) return s.dir === 'asc' ? countA - countB : countB - countA;
 
-		        const len = Math.max(listA.length, listB.length);
-		        
-		        for (let i = 0; i < len; i++) {
-		            const aNum = listA[i] ?? -Infinity;
-		            const bNum = listB[i] ?? -Infinity;
-		            
-		            if (aNum < bNum) return s.dir === 'asc' ? -1 : 1;
-		            if (aNum > bNum) return s.dir === 'asc' ? 1 : -1;
-		        }
-		        continue;
-		} else if (col === 'closed_fret_shapes') {
-        // Custom shape order: R > P... > M...
-			const shapeRank = (shape) => {
-			  const trimmed = String(shape).trim();
-			  if (trimmed.startsWith('R')) return 2000; // Highest
-			  if (trimmed.startsWith('P')) return 1000 - trimmed.length; // More Ps = smaller rank
-			  if (trimmed.startsWith('M')) return 500 - trimmed.length;  // More Ms = smaller rank
-			  return 0;
-			};
-
-			const listA = String(valA).split(',').map(v => v.trim());
-			const listB = String(valB).split(',').map(v => v.trim());
-
-			const len = Math.max(listA.length, listB.length);
-			for (let i = 0; i < len; i++) {
-			  const aVal = listA[i] ?? '';
-			  const bVal = listB[i] ?? '';
-			  const aRank = shapeRank(aVal);
-			  const bRank = shapeRank(bVal);
-			  if (aRank < bRank) return s.dir === 'asc' ? -1 : 1;
-			  if (aRank > bRank) return s.dir === 'asc' ? 1 : -1;
-			}
-			continue;
+		  for (let i = 0; i < bitsA.length; i++) {
+			if (bitsA[i] !== bitsB[i]) return s.dir === 'asc' ? bitsB[i] - bitsA[i] : bitsA[i] - bitsB[i];
 		  }
 
-	else if (col === 'closed_formula_ext' || col === 'open_formula_ext' || col === 'closed_extension' || col === 'open_extension' || col === 'open_bass' || col === 'closed_bass') {
+		  return 0; // identical
+		}
+		else if (col === 'closed_fret_numbers' || col === 'open_fret_numbers' || col === 'closed_midi_numbers' || col === 'open_midi_numbers') {
+			// parse "1,2,-,3,-,-" -> [1,2,null,3,null,null]
+			const toList = (val) => String(val).split(',').map(v => {
+				const n = v.trim();
+				return n === '-' || n === '' ? null : Number(n);
+			});
+			const listA = toList(valA);
+			const listB = toList(valB);
+			
+			// Count total occupied frets
+			const countA = listA.filter(v => v !== null).length;
+			const countB = listB.filter(v => v !== null).length;
+			
+			// Fewer frets come first in ascending order
+			if (countA !== countB) {
+				if (s.dir === 'asc') return countA < countB ? -1 : 1;
+				else return countA < countB ? 1 : -1;
+			}
+			
+			// If same number of frets, compare position by position
+			const len = Math.max(listA.length, listB.length);
+			for (let i = 0; i < len; i++) {
+				const aVal = listA[i] ?? null;
+				const bVal = listB[i] ?? null;
+				const aOcc = aVal !== null ? 1 : 0;
+				const bOcc = bVal !== null ? 1 : 0;
+				
+				// If one has a fret here and the other doesn't, the one with a fret comes first
+				if (aOcc !== bOcc) {
+					if (s.dir === 'asc') return aOcc > bOcc ? -1 : 1;
+					else return aOcc > bOcc ? 1 : -1;
+				}
+				// If both occupied, compare numeric fret values
+				if (aOcc === 1 && bOcc === 1) {
+					if (aVal < bVal) return s.dir === 'asc' ? -1 : 1;
+					if (aVal > bVal) return s.dir === 'asc' ? 1 : -1;
+				}
+				// otherwise both empty -> continue to next position
+			}
+			// All positions equal -> keep original order
+			continue;
+		}
+		else if (col === 'closed_fret_shapes') {
+			  const shapeRank = (shape) => {
+				const trimmed = String(shape).trim();
+				if (trimmed === 'R') return 3;
+				if (trimmed === 'M') return 2;
+				if (trimmed === 'P') return 1;
+				return 0; // dash or empty
+			  };
+
+			  const listA = String(valA).split(',').map(v => v.trim());
+			  const listB = String(valB).split(',').map(v => v.trim());
+			  const len = Math.max(listA.length, listB.length);
+
+			  // Rule 1: index of first non-dash
+			  const firstIndexA = listA.findIndex(v => v !== '-' && v !== '');
+			  const firstIndexB = listB.findIndex(v => v !== '-' && v !== '');
+			  if (firstIndexA !== firstIndexB) {
+				return s.dir === 'asc'
+				  ? firstIndexA - firstIndexB
+				  : firstIndexB - firstIndexA;
+			  }
+
+			  // Rule 2: number of non-dash items
+			  const countA = listA.filter(v => v !== '-' && v !== '').length;
+			  const countB = listB.filter(v => v !== '-' && v !== '').length;
+			  if (countA !== countB) {
+				return s.dir === 'asc'
+				  ? countA - countB
+				  : countB - countA;
+			  }
+
+			  // Rule 3 & 4: compare position by position (R > M > P)
+			  for (let i = 0; i < len; i++) {
+				const aRank = shapeRank(listA[i]);
+				const bRank = shapeRank(listB[i]);
+				if (aRank !== bRank) {
+				  return s.dir === 'asc'
+					? bRank - aRank // R(3) > M(2) > P(1)
+					: aRank - bRank;
+				}
+			  }
+
+			  // If identical
+			  return 0;
+			}
+
+	else if (col === 'closed_formula_ext' || col === 'open_formula_ext' || col === 'closed_formula_scale' || col === 'open_formula_scale' || col === 'closed_extension' || col === 'open_extension' || col === 'open_bass' || col === 'closed_bass' || col === 'closed_tones') {
 	  const cleanValA = String(valA).replace(/-/g, '');
 	  const cleanValB = String(valB).replace(/-/g, '');
 
